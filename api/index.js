@@ -1,5 +1,3 @@
-     // api/index.js
-     const express = require('express');
-     const app = express();
-     // ... your routes and middleware ...
-     module.exports = app;
+// api/index.js
+const app = require('../app');
+module.exports = app;
