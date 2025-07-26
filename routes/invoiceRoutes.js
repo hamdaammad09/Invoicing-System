@@ -14,6 +14,14 @@ router.post('/', createInvoice);
 
 // GET /api/invoices - Get all invoices
 router.get('/', getInvoices);
+// Test endpoint for CORS debugging (MUST come before /:id route)
+router.get('/test-cors', (req, res) => {
+  res.json({ 
+    message: 'CORS test successful', 
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin 
+  });
+});
 
 // GET /api/invoices/:id - Get single invoice by ID
 router.get('/:id', getInvoiceById);
