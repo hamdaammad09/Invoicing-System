@@ -19,24 +19,16 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(cors({
-  origin: '*', // Allow all origins temporarily
-  credentials: false // Must be false when using '*'
-}));
+const cors = require('cors');
 
-// Additional CORS handling for preflight requests
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
+const corsOptions = {
+  origin: 'http://localhost:3001', // Your React frontend running locally
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 const clientRoutes = require('./routes/clientRoutes');
