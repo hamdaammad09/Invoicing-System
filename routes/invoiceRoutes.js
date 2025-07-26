@@ -32,6 +32,15 @@ router.put('/:id', updateInvoice);
 // DELETE /api/invoices/:id - Delete invoice by ID
 router.delete('/:id', deleteInvoice);
 
+// Test endpoint for CORS debugging
+router.get('/test-cors', (req, res) => {
+  res.json({ 
+    message: 'CORS test successful', 
+    timestamp: new Date().toISOString(),
+    origin: req.headers.origin 
+  });
+});
+
 // Optional: catch-all for unmatched routes
 router.use((req, res) => {
   res.status(404).json({ message: 'Route Not Found' });

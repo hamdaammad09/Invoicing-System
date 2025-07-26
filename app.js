@@ -32,7 +32,6 @@ app.use((req, res, next) => {
     next();
   }
 });
-
 app.use(express.json());
 
 const clientRoutes = require('./routes/clientRoutes');
