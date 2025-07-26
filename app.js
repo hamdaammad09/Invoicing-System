@@ -11,14 +11,14 @@ const connectDB = require('./config/db');
 const app = express();
 
 // Connect to MongoDB (with better error handling)
-try {
-  connectDB().catch(err => {
-    console.error('Failed to connect to MongoDB:', err);
-    // Don't exit the process, let it continue
-  });
-} catch (error) {
-  console.error('Error in database connection setup:', error);
-}
+let dbConnected = false;
+connectDB().then(connected => {
+  dbConnected = connected;
+  console.log('Database connection status:', connected);
+}).catch(err => {
+  console.error('Failed to connect to MongoDB:', err);
+  dbConnected = false;
+});
 
 // Middleware
 app.use((req, res, next) => {
@@ -59,7 +59,8 @@ app.get('/', (req, res) => {
   res.json({
     message: '✅ API is running...',
     timestamp: new Date().toISOString(),
-    status: 'healthy'
+    status: 'healthy',
+    database: dbConnected ? 'connected' : 'disconnected'
   });
 });
 
