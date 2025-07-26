@@ -15,8 +15,8 @@ connectDB();
 
 // Middleware
 app.use(cors({ 
-  origin: true, // Allow all origins temporarily for testing
-  credentials: true 
+  origin: 'http://localhost:3001',
+  credentials: true
 }));
 app.use(express.json());
 
