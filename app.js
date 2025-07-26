@@ -10,11 +10,15 @@ const connectDB = require('./config/db');
 // Create Express app
 const app = express();
 
-// Connect to MongoDB
-connectDB().catch(err => {
-  console.error('Failed to connect to MongoDB:', err);
-  // Don't exit the process, let it continue
-});
+// Connect to MongoDB (with better error handling)
+try {
+  connectDB().catch(err => {
+    console.error('Failed to connect to MongoDB:', err);
+    // Don't exit the process, let it continue
+  });
+} catch (error) {
+  console.error('Error in database connection setup:', error);
+}
 
 // Middleware
 app.use((req, res, next) => {
@@ -52,7 +56,11 @@ app.use('/api/export', exportRoutes);
 
 // ===== Health Check / Root Route =====
 app.get('/', (req, res) => {
-  res.send('✅ API is running...');
+  res.json({
+    message: '✅ API is running...',
+    timestamp: new Date().toISOString(),
+    status: 'healthy'
+  });
 });
 
 // ===== CORS Test Route =====
