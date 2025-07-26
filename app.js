@@ -14,6 +14,11 @@ const app = express();
 connectDB();
 
 // Middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`);
+  next();
+});
+
 app.use(cors({
   origin: '*', // Allow all origins temporarily
   credentials: false // Must be false when using '*'
