@@ -90,6 +90,17 @@ app.get('/cors-test', (req, res) => {
   });
 });
 
+// ===== Environment Test Route =====
+app.get('/env-test', (req, res) => {
+  res.json({
+    message: 'Environment variables test',
+    mongoUriExists: !!process.env.MONGO_URI,
+    mongoUriLength: process.env.MONGO_URI ? process.env.MONGO_URI.length : 0,
+    mongoUriPreview: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 20) + '...' : 'not set',
+    allEnvVars: Object.keys(process.env).filter(key => key.includes('MONGO'))
+  });
+});
+
 // ===== Error Handler =====
 app.use((err, req, res, next) => {
   console.error('Error:', err);
