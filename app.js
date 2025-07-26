@@ -11,27 +11,23 @@ const connectDB = require('./config/db');
 const app = express();
 
 // Connect to MongoDB
-connectDB();
+connectDB().catch(err => {
+  console.error('Failed to connect to MongoDB:', err);
+  // Don't exit the process, let it continue
+});
 
 // Middleware
-app.use(cors({
-  origin: '*', // Allow all origins temporarily
-  credentials: false // Must be false when using '*'
-}));
-
-// Additional CORS handling for preflight requests
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
+  console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`);
+  next();
 });
+
+app.use(cors({
+  origin: ['http://localhost:3001', 'http://localhost:3000'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 app.use(express.json());
 
 const clientRoutes = require('./routes/clientRoutes');
@@ -67,6 +63,20 @@ app.get('/cors-test', (req, res) => {
     origin: req.headers.origin || 'No origin header',
     method: req.method
   });
+});
+
+// ===== Error Handler =====
+app.use((err, req, res, next) => {
+  console.error('Error:', err);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: err.message 
+  });
+});
+
+// ===== 404 Handler =====
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
 });
 
 module.exports = app; 

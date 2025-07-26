@@ -14,9 +14,12 @@ exports.createService = async (req, res) => {
 // Get all services
 exports.getServices = async (req, res) => {
   try {
+    console.log(' getServices called');
     const services = await Service.find();
+    console.log('✅ Services found:', services.length);
     res.json(services);
   } catch (error) {
+    console.error('❌ getServices error:', error);
     res.status(500).json({ message: error.message });
   }
 };
