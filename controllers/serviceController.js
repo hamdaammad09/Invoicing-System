@@ -13,8 +13,15 @@ exports.createService = async (req, res) => {
 
 // Get all services
 exports.getServices = async (req, res) => {
-  console.log(' getServices called');
-  res.json({ message: 'Services endpoint working', data: [] });
+  try {
+    console.log(' getServices called');
+    const services = await Service.find();
+    console.log('✅ Services found:', services.length);
+    res.json(services);
+  } catch (error) {
+    console.error('❌ getServices error:', error);
+    res.status(500).json({ message: error.message });
+  }
 };
 
 // Get a single service by ID
