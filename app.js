@@ -12,12 +12,14 @@ const app = express();
 
 // Connect to MongoDB (with better error handling)
 let dbConnected = false;
-connectDB().then(connected => {
+let dbConnectionPromise = connectDB().then(connected => {
   dbConnected = connected;
   console.log('Database connection status:', connected);
+  return connected;
 }).catch(err => {
   console.error('Failed to connect to MongoDB:', err);
   dbConnected = false;
+  return false;
 });
 
 // Middleware
@@ -55,13 +57,27 @@ app.use('/api/fbr-api-settings', apiSettingsRoutes);
 app.use('/api/export', exportRoutes);
 
 // ===== Health Check / Root Route =====
-app.get('/', (req, res) => {
-  res.json({
-    message: '✅ API is running...',
-    timestamp: new Date().toISOString(),
-    status: 'healthy',
-    database: dbConnected ? 'connected' : 'disconnected'
-  });
+app.get('/', async (req, res) => {
+  try {
+    // Wait for database connection to complete
+    const dbStatus = await dbConnectionPromise;
+    
+    res.json({
+      message: '✅ API is running...',
+      timestamp: new Date().toISOString(),
+      status: 'healthy',
+      database: dbStatus ? 'connected' : 'disconnected',
+      mongoUri: process.env.MONGO_URI ? 'set' : 'not set'
+    });
+  } catch (error) {
+    res.json({
+      message: '✅ API is running...',
+      timestamp: new Date().toISOString(),
+      status: 'healthy',
+      database: 'error',
+      error: error.message
+    });
+  }
 });
 
 // ===== CORS Test Route =====
