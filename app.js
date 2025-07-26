@@ -19,8 +19,6 @@ app.use((req, res, next) => {
   next();
 });
 
-const cors = require('cors');
-
 const corsOptions = {
   origin: 'http://localhost:3001', // Your React frontend running locally
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
