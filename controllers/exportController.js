@@ -7,26 +7,38 @@ const path = require('path');
 // Excel Export
 exports.exportInvoicesToExcel = async (req, res) => {
   try {
-    const invoices = await Invoice.find().populate('client');
+    const invoices = await Invoice.find();
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Invoices');
 
     worksheet.columns = [
       { header: 'Invoice ID', key: '_id', width: 25 },
-      { header: 'Client Name', key: 'clientName', width: 25 },
-      { header: 'Amount', key: 'amount', width: 15 },
+      { header: 'Invoice Number', key: 'invoiceNumber', width: 20 },
+      { header: 'Buyer Info', key: 'buyerInfo', width: 30 },
+      { header: 'Items', key: 'items', width: 40 },
+      { header: 'Total Amount', key: 'totalAmount', width: 15 },
+      { header: 'Discount', key: 'discount', width: 15 },
+      { header: 'GST', key: 'gst', width: 15 },
+      { header: 'Income Tax', key: 'incomeTax', width: 15 },
+      { header: 'Final Amount', key: 'finalAmount', width: 15 },
       { header: 'Status', key: 'status', width: 15 },
-      { header: 'Issue Date', key: 'issueDate', width: 20 },
+      { header: 'Issue Date', key: 'issuedDate', width: 20 },
     ];
 
     invoices.forEach((invoice) => {
       worksheet.addRow({
         _id: invoice._id.toString(),
-        clientName: invoice.client?.name || 'N/A',
-        amount: invoice.amount,
-        status: invoice.status,
-        issueDate: invoice.issueDate.toISOString().split('T')[0],
+        invoiceNumber: invoice.invoiceNumber || 'N/A',
+        buyerInfo: typeof invoice.buyerInfo === 'string' ? invoice.buyerInfo : 'N/A',
+        items: Array.isArray(invoice.items) ? invoice.items.map(item => item.name || item).join(', ') : invoice.items || 'N/A',
+        totalAmount: invoice.totalAmount || 0,
+        discount: invoice.discount || 0,
+        gst: invoice.gst || 0,
+        incomeTax: invoice.incomeTax || 0,
+        finalAmount: invoice.finalAmount || 0,
+        status: invoice.status || 'pending',
+        issuedDate: invoice.issuedDate ? invoice.issuedDate.toISOString().split('T')[0] : 'N/A',
       });
     });
 
@@ -39,7 +51,7 @@ exports.exportInvoicesToExcel = async (req, res) => {
     await workbook.xlsx.write(res);
     res.end();
   } catch (error) {
-    console.error(error);
+    console.error('Excel export error:', error);
     res.status(500).json({ message: 'Failed to export Excel' });
   }
 };
@@ -47,7 +59,7 @@ exports.exportInvoicesToExcel = async (req, res) => {
 // PDF Export
 exports.exportInvoicesToPDF = async (req, res) => {
   try {
-    const invoices = await Invoice.find().populate('client');
+    const invoices = await Invoice.find();
 
     const doc = new PDFDocument({ margin: 30, size: 'A4' });
 
@@ -61,16 +73,18 @@ exports.exportInvoicesToPDF = async (req, res) => {
       doc
         .fontSize(12)
         .text(`Invoice #${index + 1}`, { underline: true })
-        .text(`Client: ${invoice.client?.name || 'N/A'}`)
-        .text(`Amount: ${invoice.amount}`)
-        .text(`Status: ${invoice.status}`)
-        .text(`Issue Date: ${invoice.issueDate.toISOString().split('T')[0]}`)
+        .text(`Invoice Number: ${invoice.invoiceNumber || 'N/A'}`)
+        .text(`Buyer Info: ${typeof invoice.buyerInfo === 'string' ? invoice.buyerInfo : 'N/A'}`)
+        .text(`Total Amount: ₹${invoice.totalAmount || 0}`)
+        .text(`Final Amount: ₹${invoice.finalAmount || 0}`)
+        .text(`Status: ${invoice.status || 'pending'}`)
+        .text(`Issue Date: ${invoice.issuedDate ? invoice.issuedDate.toISOString().split('T')[0] : 'N/A'}`)
         .moveDown(1);
     });
 
     doc.end();
   } catch (error) {
-    console.error(error);
+    console.error('PDF export error:', error);
     res.status(500).json({ message: 'Failed to export PDF' });
   }
 };
