@@ -1,14 +1,17 @@
 const express = require('express');
 const router = express.Router();
 
-// Ensure correct path and function names
+// Import your controllers
 const {
   exportInvoicesToExcel,
   exportInvoicesToPDF
 } = require('../controllers/exportController');
 
-// Define routes
+// Excel Export for Invoices - Use the controller
 router.get('/excel', exportInvoicesToExcel);
 router.get('/pdf', exportInvoicesToPDF);
+
+// Additional route for invoices (if needed)
+router.get('/invoices', exportInvoicesToExcel);
 
 module.exports = router;
