@@ -29,7 +29,9 @@ app.use((req, res, next) => {
 });
 
 app.use(cors({
-  origin: ['http://localhost:3001', 'http://localhost:3000'],
+  origin: ['http://localhost:3001', 
+           'http://localhost:3000',
+           'https://consultancy-frontend-eight.vercel.app/'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -98,6 +100,25 @@ app.get('/env-test', (req, res) => {
     mongoUriLength: process.env.MONGO_URI ? process.env.MONGO_URI.length : 0,
     mongoUriPreview: process.env.MONGO_URI ? process.env.MONGO_URI.substring(0, 20) + '...' : 'not set',
     allEnvVars: Object.keys(process.env).filter(key => key.includes('MONGO'))
+  });
+});
+
+// ===== API Routes Test =====
+app.get('/api-test', (req, res) => {
+  res.json({
+    message: 'API routes test',
+    availableRoutes: [
+      'GET /api/clients',
+      'GET /api/invoices', 
+      'GET /api/services',
+      'GET /api/dashboard/stats',
+      'GET /api/users',
+      'GET /api/export/excel',
+      'GET /api/export/test',
+      'GET /api/fbr-invoices',
+      'GET /api/tasks'
+    ],
+    timestamp: new Date().toISOString()
   });
 });
 
