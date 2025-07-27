@@ -25,16 +25,47 @@ let dbConnectionPromise = connectDB().then(connected => {
 // Middleware
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path} - ${new Date().toISOString()}`);
+  // Add cache-busting header
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   next();
 });
 
 app.use(cors({
-  origin: true, // Allow all origins temporarily
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://consultancy-frontend-eight.vercel.app'
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
   exposedHeaders: ['Content-Disposition']
 }));
+
+// Additional CORS headers for all responses
+app.use((req, res, next) => {
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://consultancy-frontend-eight.vercel.app'
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 app.use(express.json());
 
 const clientRoutes = require('./routes/clientRoutes');
