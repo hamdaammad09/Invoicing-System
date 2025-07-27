@@ -7,14 +7,12 @@ const invoiceSchema = new mongoose.Schema({
     unique: true,
   },
   buyerInfo: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Client',
+    type: mongoose.Schema.Types.Mixed, // Can be ObjectId or String
     required: true,
   },
   sellerInfo: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Client',
-    required: true,
+    type: mongoose.Schema.Types.Mixed, // Can be ObjectId or String
+    default: null,
   },
   items: [
     {
