@@ -7,6 +7,11 @@ const {
   exportInvoicesToPDF
 } = require('../controllers/exportController');
 
+// Test route to verify the export routes are working
+router.get('/test', (req, res) => {
+  res.json({ message: 'Export routes are working!', timestamp: new Date().toISOString() });
+});
+
 // Excel Export for Invoices - Use the controller
 router.get('/excel', exportInvoicesToExcel);
 router.get('/pdf', exportInvoicesToPDF);
