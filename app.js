@@ -53,14 +53,21 @@ app.use((req, res, next) => {
   ];
   
   const origin = req.headers.origin;
+  console.log('Request origin:', origin);
+  
   if (allowedOrigins.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
+    console.log('CORS header set for origin:', origin);
+  } else {
+    console.log('Origin not allowed:', origin);
   }
   
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
   
   if (req.method === 'OPTIONS') {
+    console.log('Handling OPTIONS request');
     res.sendStatus(200);
   } else {
     next();
@@ -100,9 +107,14 @@ app.get('/', async (req, res) => {
       status: 'healthy',
       database: dbStatus ? 'connected' : 'disconnected',
       mongoUri: process.env.MONGO_URI ? 'set' : 'not set',
-      version: '2.0.2',
+      version: '2.0.3',
       corsEnabled: true,
-      deployment: 'forced-update'
+      deployment: 'cors-fix-attempt-3',
+      corsHeaders: {
+        'Access-Control-Allow-Origin': 'https://consultancy-frontend-eight.vercel.app',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+      }
     });
   } catch (error) {
     res.json({
@@ -111,7 +123,7 @@ app.get('/', async (req, res) => {
       status: 'healthy',
       database: 'error',
       error: error.message,
-      version: '2.0.2'
+      version: '2.0.3'
     });
   }
 });
