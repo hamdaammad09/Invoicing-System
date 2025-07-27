@@ -8,35 +8,6 @@ exports.createInvoice = async (req, res) => {
     const {
       invoiceNumber,
       buyerInfo,
-      sellerInfo,
-      items,
-      discount,
-      gst,
-      incomeTax,
-      digitalSignature,
-      irn
-    } = req.body;
-
-    const totalAmount = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const finalAmount = totalAmount + gst + incomeTax - discount;
-
-    // Generate QR code data (customize as needed)
-    const qrData = JSON.stringify({
-      invoiceNumber,
-      buyerInfo,
-      sellerInfo,
-      totalAmount,
-      finalAmount,
-      irn
-    });
-
-    // Generate QR code as a Data URL
-    const qrCode = await QRCode.toDataURL(qrData);
-
-    const invoice = new Invoice({
-      invoiceNumber,
-      buyerInfo,
-      sellerInfo,
       items,
       totalAmount,
       discount,
@@ -45,30 +16,84 @@ exports.createInvoice = async (req, res) => {
       finalAmount,
       digitalSignature,
       irn,
-      qrCode // Save the generated QR code
+      qrCode
+    } = req.body;
+
+    // Handle items - if it's a string, convert to array format
+    let processedItems = [];
+    if (typeof items === 'string' && items.trim()) {
+      // Split by comma and create item objects
+      processedItems = items.split(',').map(item => ({
+        name: item.trim(),
+        price: parseFloat(totalAmount) || 0,
+        quantity: 1
+      }));
+    } else if (Array.isArray(items)) {
+      processedItems = items;
+    }
+
+    // Calculate amounts if not provided
+    const calculatedTotalAmount = totalAmount || processedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const calculatedFinalAmount = finalAmount || (calculatedTotalAmount + (parseFloat(gst) || 0) + (parseFloat(incomeTax) || 0) - (parseFloat(discount) || 0));
+
+    // Generate QR code if not provided
+    let generatedQRCode = qrCode;
+    if (!qrCode) {
+      try {
+        const qrData = JSON.stringify({
+          invoiceNumber,
+          buyerInfo,
+          totalAmount: calculatedTotalAmount,
+          finalAmount: calculatedFinalAmount,
+          irn
+        });
+        generatedQRCode = await QRCode.toDataURL(qrData);
+      } catch (qrError) {
+        console.log('QR code generation failed, using null:', qrError.message);
+        generatedQRCode = null;
+      }
+    }
+
+    const invoice = new Invoice({
+      invoiceNumber,
+      buyerInfo: buyerInfo || null, // Handle as string for now
+      sellerInfo: null, // Will be set later if needed
+      items: processedItems,
+      totalAmount: calculatedTotalAmount,
+      discount: parseFloat(discount) || 0,
+      gst: parseFloat(gst) || 0,
+      incomeTax: parseFloat(incomeTax) || 0,
+      finalAmount: calculatedFinalAmount,
+      digitalSignature,
+      irn,
+      qrCode: generatedQRCode
     });
 
     await invoice.save();
 
-    const invoiceData = [
-      {
-        'Invoice Number': invoice.invoiceNumber,
-        'Buyer Name': invoice.buyerInfo.name,
-        'Seller Name': invoice.sellerInfo.name,
-        'Total Amount': invoice.totalAmount,
-        'Discount': invoice.discount,
-        'GST': invoice.gst,
-        'Income Tax': invoice.incomeTax,
-        'Final Amount': invoice.finalAmount,
-        'Issued Date': invoice.issuedDate,
-        'Status': invoice.status,
-      },
-    ];
-
-    exportToExcel(invoiceData, `invoice_${invoice.invoiceNumber}`);
+    // Export to Excel (optional - can be commented out if causing issues)
+    try {
+      const invoiceData = [
+        {
+          'Invoice Number': invoice.invoiceNumber,
+          'Buyer Info': invoice.buyerInfo,
+          'Total Amount': invoice.totalAmount,
+          'Discount': invoice.discount,
+          'GST': invoice.gst,
+          'Income Tax': invoice.incomeTax,
+          'Final Amount': invoice.finalAmount,
+          'Issued Date': invoice.issuedDate,
+          'Status': invoice.status,
+        },
+      ];
+      exportToExcel(invoiceData, `invoice_${invoice.invoiceNumber}`);
+    } catch (exportError) {
+      console.log('Excel export failed:', exportError.message);
+    }
 
     res.status(201).json(invoice);
   } catch (error) {
+    console.error('Invoice creation error:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -76,9 +101,10 @@ exports.createInvoice = async (req, res) => {
 // Get All Invoices
 exports.getInvoices = async (req, res) => {
   try {
-    const invoices = await Invoice.find().populate('buyerInfo').populate('sellerInfo');
+    const invoices = await Invoice.find();
     res.json(invoices);
   } catch (error) {
+    console.error('Error fetching invoices:', error);
     res.status(500).json({ error: error.message });
   }
 };
