@@ -7,11 +7,19 @@ const path = require('path');
 // Excel Export
 exports.exportInvoicesToExcel = async (req, res) => {
   try {
+    console.log('🔄 Starting Excel export...');
+    
     const invoices = await Invoice.find();
+    console.log(`📊 Found ${invoices.length} invoices to export`);
+
+    if (invoices.length === 0) {
+      return res.status(404).json({ message: 'No invoices found to export' });
+    }
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Invoices');
 
+    // Define columns
     worksheet.columns = [
       { header: 'Invoice ID', key: '_id', width: 25 },
       { header: 'Invoice Number', key: 'invoiceNumber', width: 20 },
@@ -26,8 +34,11 @@ exports.exportInvoicesToExcel = async (req, res) => {
       { header: 'Issue Date', key: 'issuedDate', width: 20 },
     ];
 
-    invoices.forEach((invoice) => {
-      worksheet.addRow({
+    // Add data rows
+    invoices.forEach((invoice, index) => {
+      console.log(`📝 Processing invoice ${index + 1}: ${invoice._id}`);
+      
+      const rowData = {
         _id: invoice._id.toString(),
         invoiceNumber: invoice.invoiceNumber || 'N/A',
         buyerInfo: typeof invoice.buyerInfo === 'string' ? invoice.buyerInfo : 'N/A',
@@ -39,20 +50,35 @@ exports.exportInvoicesToExcel = async (req, res) => {
         finalAmount: invoice.finalAmount || 0,
         status: invoice.status || 'pending',
         issuedDate: invoice.issuedDate ? invoice.issuedDate.toISOString().split('T')[0] : 'N/A',
-      });
+      };
+      
+      worksheet.addRow(rowData);
     });
 
+    console.log('✅ Excel data prepared, writing to response...');
+
+    // Set headers
     res.setHeader(
       'Content-Type',
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     );
     res.setHeader('Content-Disposition', 'attachment; filename=invoices.xlsx');
 
+    // Write to response
     await workbook.xlsx.write(res);
+    console.log('✅ Excel file written successfully');
+    
     res.end();
   } catch (error) {
-    console.error('Excel export error:', error);
-    res.status(500).json({ message: 'Failed to export Excel' });
+    console.error('❌ Excel export error:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Send a more detailed error response
+    res.status(500).json({ 
+      message: 'Failed to export Excel',
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
