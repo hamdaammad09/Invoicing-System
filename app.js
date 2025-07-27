@@ -99,7 +99,9 @@ app.get('/', async (req, res) => {
       timestamp: new Date().toISOString(),
       status: 'healthy',
       database: dbStatus ? 'connected' : 'disconnected',
-      mongoUri: process.env.MONGO_URI ? 'set' : 'not set'
+      mongoUri: process.env.MONGO_URI ? 'set' : 'not set',
+      version: '2.0.1',
+      corsEnabled: true
     });
   } catch (error) {
     res.json({
@@ -107,7 +109,8 @@ app.get('/', async (req, res) => {
       timestamp: new Date().toISOString(),
       status: 'healthy',
       database: 'error',
-      error: error.message
+      error: error.message,
+      version: '2.0.1'
     });
   }
 });
@@ -118,7 +121,12 @@ app.get('/cors-test', (req, res) => {
     message: 'CORS is working!',
     timestamp: new Date().toISOString(),
     origin: req.headers.origin || 'No origin header',
-    method: req.method
+    method: req.method,
+    corsHeaders: {
+      'Access-Control-Allow-Origin': req.headers.origin || '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+    }
   });
 });
 
