@@ -100,8 +100,9 @@ app.get('/', async (req, res) => {
       status: 'healthy',
       database: dbStatus ? 'connected' : 'disconnected',
       mongoUri: process.env.MONGO_URI ? 'set' : 'not set',
-      version: '2.0.1',
-      corsEnabled: true
+      version: '2.0.2',
+      corsEnabled: true,
+      deployment: 'forced-update'
     });
   } catch (error) {
     res.json({
@@ -110,7 +111,7 @@ app.get('/', async (req, res) => {
       status: 'healthy',
       database: 'error',
       error: error.message,
-      version: '2.0.1'
+      version: '2.0.2'
     });
   }
 });
