@@ -16,12 +16,19 @@ const invoiceSchema = new mongoose.Schema({
   },
   items: [
     {
-      name: String,
-      price: Number,
+      product: String, // Product name
       quantity: {
         type: Number,
         default: 1,
       },
+      unitPrice: Number, // Unit Price Excluding GST
+      totalValue: Number, // Total Value Excluding GST
+      salesTax: Number, // Sales Tax @ 18%
+      extraTax: {
+        type: Number,
+        default: 0,
+      }, // Extra Tax
+      finalValue: Number, // Value including GST & Extra Tax
     }
   ],
   gst: {

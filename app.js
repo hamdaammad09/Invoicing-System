@@ -86,6 +86,7 @@ const userRoutes = require('./routes/userRoutes');
 const apiSettingsRoutes = require('./routes/fbrApiSettingsRoutes');
 const exportRoutes = require('./routes/exportRoutes');
 const pdfRoutes = require('./routes/pdfRoutes');
+const sellerSettingsRoutes = require('./routes/sellerSettingsRoutes');
 
 app.use('/api/clients', clientRoutes);
 app.use('/api/invoices', invoiceRoutes);
@@ -97,6 +98,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/fbr-api-settings', apiSettingsRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/pdf', pdfRoutes);
+app.use('/api/seller-settings', sellerSettingsRoutes);
 
 // ===== Health Check / Root Route =====
 app.get('/', async (req, res) => {
