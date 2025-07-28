@@ -69,7 +69,7 @@ const generateInvoicePDF = async (req, res) => {
     doc.fontSize(10).font('Helvetica').text(sellerSettings.sellerNTN, leftX + 40, currentY);
     
     doc.fontSize(10).font('Helvetica-Bold').text('Invoice No:', leftX, currentY + 20);
-    doc.fontSize(10).font('Helvetica').text(invoice.invoiceNumber || 'N/A', leftX + 70, currentY + 20);
+    doc.fontSize(10).font('Helvetica').text(sellerSettings.invoiceNumber || invoice.invoiceNumber || 'N/A', leftX + 70, currentY + 20);
 
     // Right column - Seller STRN and Date
     doc.fontSize(10).font('Helvetica-Bold').text('STRN:', rightX, currentY);

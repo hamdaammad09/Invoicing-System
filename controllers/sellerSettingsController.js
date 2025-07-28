@@ -21,7 +21,7 @@ const getSellerSettings = async (req, res) => {
 // Update seller settings
 const updateSellerSettings = async (req, res) => {
   try {
-    const { companyName, sellerNTN, sellerSTRN, address, phone, email } = req.body;
+    const { companyName, sellerNTN, sellerSTRN, address, phone, invoiceNumber } = req.body;
     
     let settings = await SellerSettings.findOne();
     
@@ -35,7 +35,7 @@ const updateSellerSettings = async (req, res) => {
     if (sellerSTRN) settings.sellerSTRN = sellerSTRN;
     if (address) settings.address = address;
     if (phone) settings.phone = phone;
-    if (email) settings.email = email;
+    if (invoiceNumber) settings.invoiceNumber = invoiceNumber;
     
     settings.updatedAt = new Date();
     await settings.save();

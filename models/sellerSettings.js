@@ -6,7 +6,7 @@ const sellerSettingsSchema = new mongoose.Schema({
   sellerSTRN: { type: String, default: '[Your STRN Number]' },
   address: { type: String, default: 'Professional Tax Services' },
   phone: { type: String, default: '[Your Phone Number]' },
-  email: { type: String, default: '[Your Email]' },
+  invoiceNumber: { type: String, default: '[Your Invoice Number]' },
   updatedAt: { type: Date, default: Date.now }
 });
 
