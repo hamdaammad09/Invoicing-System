@@ -18,6 +18,35 @@ const getSellerSettings = async (req, res) => {
   }
 };
 
+// Create new seller settings
+const createSellerSettings = async (req, res) => {
+  try {
+    const { companyName, sellerNTN, sellerSTRN, address, phone, invoiceNumber } = req.body;
+    
+    // Check if settings already exist
+    const existingSettings = await SellerSettings.findOne();
+    if (existingSettings) {
+      return res.status(400).json({ error: 'Seller settings already exist. Use PUT to update.' });
+    }
+    
+    // Create new settings
+    const settings = new SellerSettings({
+      companyName,
+      sellerNTN,
+      sellerSTRN,
+      address,
+      phone,
+      invoiceNumber
+    });
+    
+    await settings.save();
+    res.status(201).json(settings);
+  } catch (error) {
+    console.error('Error creating seller settings:', error);
+    res.status(500).json({ error: 'Failed to create seller settings' });
+  }
+};
+
 // Update seller settings
 const updateSellerSettings = async (req, res) => {
   try {
@@ -49,5 +78,6 @@ const updateSellerSettings = async (req, res) => {
 
 module.exports = {
   getSellerSettings,
+  createSellerSettings,
   updateSellerSettings
 }; 
