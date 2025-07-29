@@ -4,10 +4,51 @@ const FbrApiSetting = require('../models/fbrApiSetting'); // New model
 // Create a new FBR invoice submission
 exports.createFbrInvoice = async (req, res) => {
   try {
+    console.log('🔄 Creating FBR invoice with data:', req.body);
+    
+    // Validate required fields
+    const { invoiceNumber, client, amount, items, hsCode, fbrEnvironment } = req.body;
+    
+    if (!invoiceNumber) {
+      return res.status(400).json({ message: 'invoiceNumber is required' });
+    }
+    
+    if (!client) {
+      return res.status(400).json({ message: 'client is required' });
+    }
+    
+    if (!amount) {
+      return res.status(400).json({ message: 'amount is required' });
+    }
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: 'items array is required and must not be empty' });
+    }
+    
+    // Validate items have required fields
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (!item.description) {
+        return res.status(400).json({ message: `Item ${i + 1} description is required` });
+      }
+      if (!item.hsCode) {
+        return res.status(400).json({ message: `Item ${i + 1} hsCode is required` });
+      }
+      if (!item.quantity) {
+        return res.status(400).json({ message: `Item ${i + 1} quantity is required` });
+      }
+      if (!item.unitPrice) {
+        return res.status(400).json({ message: `Item ${i + 1} unitPrice is required` });
+      }
+    }
+    
     const fbrInvoice = new FbrInvoice(req.body);
     await fbrInvoice.save();
+    
+    console.log('✅ FBR invoice created successfully:', fbrInvoice._id);
     res.status(201).json(fbrInvoice);
   } catch (error) {
+    console.error('❌ Error creating FBR invoice:', error);
     res.status(400).json({ message: error.message });
   }
 };

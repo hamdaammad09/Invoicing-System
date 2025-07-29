@@ -93,7 +93,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/services', serviceRoutes);
-app.use('/api/fbr-invoices', fbrInvoiceRoutes);
+app.use('/api/fbrinvoices', fbrInvoiceRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/fbr-api-settings', apiSettingsRoutes);
 app.use('/api/export', exportRoutes);
