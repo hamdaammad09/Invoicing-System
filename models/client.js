@@ -1,10 +1,10 @@
 const mongoose = require('mongoose');
 
 const clientSchema = new mongoose.Schema({
-  id:{type :String,  unique:true ,  autoIncrement:true},
-  name: { type: String, required: true },
+  //id:{type :String,  unique:true ,  autoIncrement:true},
+  //name: { type: String, required: true },
   cnic: { type: String, required: true, unique: true },
-  company: { type: String },
+  companyName: { type: String }, // Changed from 'company' to 'companyName'
   buyerSTRN: { type: String }, // Buyer STRN
   buyerNTN: { type: String }, // Buyer NTN
   email: String,
