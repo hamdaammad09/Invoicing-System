@@ -116,30 +116,61 @@ exports.generateInvoicePDF = async (req, res) => {
   try {
     const { invoiceId } = req.params;
     
+    console.log('🔍 Generating PDF for invoice ID:', invoiceId);
+    
     // Get invoice with populated buyer and seller data
     const invoice = await Invoice.findById(invoiceId)
       .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address phone')
       .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone');
     
     if (!invoice) {
+      console.log('❌ Invoice not found for ID:', invoiceId);
       return res.status(404).json({ error: 'Invoice not found' });
     }
+
+    console.log('📄 Invoice found:', {
+      invoiceId: invoice._id,
+      invoiceNumber: invoice.invoiceNumber,
+      hasBuyerId: !!invoice.buyerId,
+      hasSellerId: !!invoice.sellerId
+    });
 
     // Extract buyer and seller data
     const buyer = invoice.buyerId;
     const seller = invoice.sellerId;
 
     if (!buyer || !seller) {
+      console.log('❌ Missing buyer or seller data:', {
+        hasBuyer: !!buyer,
+        hasSeller: !!seller,
+        buyerId: invoice.buyerId,
+        sellerId: invoice.sellerId
+      });
+      
       return res.status(400).json({ 
         error: 'Buyer or Seller data not found. This invoice may not have proper buyer/seller associations.',
         invoiceId: invoice._id,
         hasBuyer: !!buyer,
-        hasSeller: !!seller
+        hasSeller: !!seller,
+        buyerId: invoice.buyerId,
+        sellerId: invoice.sellerId
       });
     }
 
+    console.log('✅ Buyer data:', {
+      companyName: buyer.companyName,
+      buyerSTRN: buyer.buyerSTRN,
+      buyerNTN: buyer.buyerNTN
+    });
+
+    console.log('✅ Seller data:', {
+      companyName: seller.companyName,
+      sellerNTN: seller.sellerNTN,
+      sellerSTRN: seller.sellerSTRN
+    });
+
     // Return data for PDF generation
-    res.json({
+    const pdfData = {
       invoice,
       buyer: {
         companyName: buyer.companyName,
@@ -156,10 +187,13 @@ exports.generateInvoicePDF = async (req, res) => {
         address: seller.address,
         phone: seller.phone
       }
-    });
+    };
+
+    console.log('📤 Sending PDF data for invoice:', invoice.invoiceNumber);
+    res.json(pdfData);
 
   } catch (error) {
-    console.error('Error generating PDF data:', error);
+    console.error('❌ Error generating PDF data:', error);
     res.status(500).json({ error: 'Failed to generate PDF data' });
   }
 };
@@ -263,6 +297,43 @@ exports.migrateInvoices = async (req, res) => {
   } catch (error) {
     console.error('Error migrating invoices:', error);
     res.status(500).json({ error: 'Failed to migrate invoices' });
+  }
+};
+
+// Debug endpoint to check invoice associations
+exports.debugInvoices = async (req, res) => {
+  try {
+    const invoices = await Invoice.find()
+      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address phone')
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone')
+      .sort({ createdAt: -1 });
+
+    const debugData = invoices.map(invoice => ({
+      invoiceId: invoice._id,
+      invoiceNumber: invoice.invoiceNumber,
+      hasBuyerId: !!invoice.buyerId,
+      hasSellerId: !!invoice.sellerId,
+      buyerData: invoice.buyerId ? {
+        companyName: invoice.buyerId.companyName,
+        buyerSTRN: invoice.buyerId.buyerSTRN,
+        buyerNTN: invoice.buyerId.buyerNTN
+      } : null,
+      sellerData: invoice.sellerId ? {
+        companyName: invoice.sellerId.companyName,
+        sellerNTN: invoice.sellerId.sellerNTN,
+        sellerSTRN: invoice.sellerId.sellerSTRN
+      } : null,
+      createdAt: invoice.createdAt
+    }));
+
+    res.json({
+      totalInvoices: invoices.length,
+      invoices: debugData
+    });
+
+  } catch (error) {
+    console.error('Error debugging invoices:', error);
+    res.status(500).json({ error: 'Failed to debug invoices' });
   }
 };
 

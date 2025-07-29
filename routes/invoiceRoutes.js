@@ -11,6 +11,9 @@ router.get('/buyers/available', invoiceController.getAvailableBuyers);
 // Get available sellers for dropdown
 router.get('/sellers/available', invoiceController.getAvailableSellers);
 
+// Debug endpoint to check invoice associations
+router.get('/debug/associations', invoiceController.debugInvoices);
+
 // Create new invoice
 router.post('/', invoiceController.createInvoice);
 
