@@ -2,6 +2,9 @@ const express = require('express');
 const router = express.Router();
 const clientController = require('../controllers/clientController');
 
+// TEMPORARY: Clear clients collection to remove old schema
+router.delete('/clear', clientController.clearClientsCollection);
+
 // Client routes
 router.post('/', clientController.addClient);
 router.get('/', clientController.getClients);

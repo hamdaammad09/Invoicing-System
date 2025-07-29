@@ -1,6 +1,19 @@
 const Client = require('../models/client');
 const { ObjectId } = require('mongodb');
 
+// TEMPORARY: Clear clients collection to remove old schema
+exports.clearClientsCollection = async (req, res) => {
+  try {
+    // Drop the entire collection to remove old schema
+    await Client.collection.drop();
+    console.log('✅ Clients collection dropped successfully');
+    res.json({ message: 'Clients collection cleared successfully. Old schema removed.' });
+  } catch (error) {
+    console.error('❌ Error clearing collection:', error);
+    res.status(500).json({ error: 'Failed to clear collection' });
+  }
+};
+
 // Add new client
 exports.addClient = async (req, res) => {
   try {
