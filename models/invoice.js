@@ -72,9 +72,20 @@ const invoiceSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['paid', 'unpaid', 'pending'],
-    default: 'unpaid',
-  }
+    enum: ['paid', 'unpaid', 'pending', 'overdue', 'cancelled'],
+    default: 'pending',
+  },
+  // Additional fields for form compatibility
+  product: String,
+  units: Number,
+  unitPrice: Number,
+  totalValue: Number,
+  salesTax: Number,
+  extraTax: {
+    type: Number,
+    default: 0,
+  },
+  finalValue: Number
 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

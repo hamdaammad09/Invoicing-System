@@ -60,7 +60,15 @@ exports.createInvoice = async (req, res) => {
       finalAmount,
       invoiceNumber,
       status,
-      issuedDate
+      issuedDate,
+      // New form fields
+      product,
+      units,
+      unitPrice,
+      totalValue,
+      salesTax,
+      extraTax,
+      finalValue
     } = req.body;
 
     console.log('🔄 Creating invoice with data:', {
@@ -113,9 +121,21 @@ exports.createInvoice = async (req, res) => {
     
     const qrCode = await QRCode.toDataURL(qrData);
 
-    // Prepare items array
+    // Prepare items array - handle both new form fields and legacy items
     let itemsArray = [];
-    if (items && Array.isArray(items)) {
+    
+    // If we have new form fields, use them
+    if (product && (unitPrice || totalValue)) {
+      itemsArray = [{
+        product: product,
+        quantity: parseFloat(units) || 1,
+        unitPrice: parseFloat(unitPrice) || 0,
+        totalValue: parseFloat(totalValue) || 0,
+        salesTax: parseFloat(salesTax) || 0,
+        extraTax: parseFloat(extraTax) || 0,
+        finalValue: parseFloat(finalValue) || 0
+      }];
+    } else if (items && Array.isArray(items)) {
       itemsArray = items;
     } else if (items && typeof items === 'string') {
       // Handle case where items is sent as a string
@@ -158,7 +178,15 @@ exports.createInvoice = async (req, res) => {
       finalAmount,
       qrCode,
       status,
-      issuedDate: issuedDate ? new Date(issuedDate) : new Date()
+      issuedDate: issuedDate ? new Date(issuedDate) : new Date(),
+      // Store new form fields for compatibility
+      product,
+      units,
+      unitPrice,
+      totalValue,
+      salesTax,
+      extraTax,
+      finalValue
     });
 
     const savedInvoice = await invoice.save();
