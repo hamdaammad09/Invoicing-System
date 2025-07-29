@@ -1,49 +1,32 @@
 const express = require('express');
 const router = express.Router();
+const invoiceController = require('../controllers/invoiceController');
 
-const {
-  createInvoice,
-  getInvoices,
-  getInvoiceById,
-  deleteInvoice,
-  updateInvoice // 👈 Import the update function
-} = require('../controllers/invoiceController');
+// Get all invoices
+router.get('/', invoiceController.getInvoices);
 
-// POST /api/invoices - Create a new invoice
-router.post('/', createInvoice);
+// Get available buyers for dropdown
+router.get('/buyers/available', invoiceController.getAvailableBuyers);
 
-// GET /api/invoices - Get all invoices
-router.get('/', getInvoices);
-// Test endpoint for CORS debugging (MUST come before /:id route)
-router.get('/test-cors', (req, res) => {
-  res.json({ 
-    message: 'CORS test successful', 
-    timestamp: new Date().toISOString(),
-    origin: req.headers.origin 
-  });
-});
+// Get available sellers for dropdown
+router.get('/sellers/available', invoiceController.getAvailableSellers);
 
-// GET /api/invoices/:id - Get single invoice by ID
-router.get('/:id', getInvoiceById);
+// Create new invoice
+router.post('/', invoiceController.createInvoice);
 
-// PUT /api/invoices/:id - Update invoice by ID ✅
-router.put('/:id', updateInvoice);
+// Get invoice by ID
+router.get('/:id', invoiceController.getInvoiceById);
 
-// DELETE /api/invoices/:id - Delete invoice by ID
-router.delete('/:id', deleteInvoice);
+// Update invoice
+router.put('/:id', invoiceController.updateInvoice);
 
-// Test endpoint for CORS debugging
-router.get('/test-cors', (req, res) => {
-  res.json({ 
-    message: 'CORS test successful', 
-    timestamp: new Date().toISOString(),
-    origin: req.headers.origin 
-  });
-});
+// Delete invoice
+router.delete('/:id', invoiceController.deleteInvoice);
 
-// Optional: catch-all for unmatched routes
-router.use((req, res) => {
-  res.status(404).json({ message: 'Route Not Found' });
-});
+// Generate PDF for specific invoice
+router.get('/:invoiceId/pdf-data', invoiceController.generateInvoicePDF);
+
+// Migration route to fix existing invoices
+router.post('/migrate', invoiceController.migrateInvoices);
 
 module.exports = router;

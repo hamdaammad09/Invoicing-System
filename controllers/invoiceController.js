@@ -1,168 +1,268 @@
 const Invoice = require('../models/invoice');
-const { exportToExcel } = require('../utils/excel');
+const Client = require('../models/client');
+const SellerSettings = require('../models/sellerSettings');
 const QRCode = require('qrcode');
 
-// Create Invoice
+// Get all invoices
+exports.getInvoices = async (req, res) => {
+  try {
+    const invoices = await Invoice.find()
+      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address') // Populate buyer data
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone') // Populate seller data
+      .sort({ issuedDate: -1 });
+    
+    res.json(invoices);
+  } catch (error) {
+    console.error('Error fetching invoices:', error);
+    res.status(500).json({ error: 'Failed to fetch invoices' });
+  }
+};
+
+// Get available buyers for dropdown
+exports.getAvailableBuyers = async (req, res) => {
+  try {
+    const buyers = await Client.find({}, 'companyName buyerSTRN buyerNTN truckNo address')
+      .sort({ companyName: 1 });
+    
+    res.json(buyers);
+  } catch (error) {
+    console.error('Error fetching buyers:', error);
+    res.status(500).json({ error: 'Failed to fetch buyers' });
+  }
+};
+
+// Get available sellers for dropdown
+exports.getAvailableSellers = async (req, res) => {
+  try {
+    const sellers = await SellerSettings.find({}, 'companyName sellerNTN sellerSTRN address phone')
+      .sort({ companyName: 1 });
+    
+    res.json(sellers);
+  } catch (error) {
+    console.error('Error fetching sellers:', error);
+    res.status(500).json({ error: 'Failed to fetch sellers' });
+  }
+};
+
+// Create new invoice
 exports.createInvoice = async (req, res) => {
   try {
-    const {
+    const { buyerId, sellerId, items, totalAmount, discount, gst, incomeTax, finalAmount } = req.body;
+
+    // Validate that buyerId and sellerId are provided
+    if (!buyerId) {
+      return res.status(400).json({ error: 'buyerId is required' });
+    }
+    
+    if (!sellerId) {
+      return res.status(400).json({ error: 'sellerId is required' });
+    }
+
+    // Validate buyer and seller exist
+    const buyer = await Client.findById(buyerId);
+    const seller = await SellerSettings.findById(sellerId);
+    
+    if (!buyer) {
+      return res.status(400).json({ error: 'Buyer not found with the provided buyerId' });
+    }
+    
+    if (!seller) {
+      return res.status(400).json({ error: 'Seller not found with the provided sellerId' });
+    }
+
+    // Generate invoice number
+    const invoiceNumber = `INV-${Date.now()}`;
+
+    // Generate QR code for the invoice
+    const qrData = JSON.stringify({
       invoiceNumber,
-      buyerInfo,
+      buyerId,
+      sellerId,
+      totalAmount,
+      date: new Date()
+    });
+    
+    const qrCode = await QRCode.toDataURL(qrData);
+
+    const invoice = new Invoice({
+      invoiceNumber,
+      buyerId,
+      sellerId,
       items,
       totalAmount,
       discount,
       gst,
       incomeTax,
       finalAmount,
-      digitalSignature,
-      irn,
       qrCode
-    } = req.body;
-
-    // Handle items - if it's a string, convert to array format
-    let processedItems = [];
-    if (typeof items === 'string' && items.trim()) {
-      // Split by comma and create item objects
-      processedItems = items.split(',').map(item => ({
-        name: item.trim(),
-        price: parseFloat(totalAmount) || 0,
-        quantity: 1
-      }));
-    } else if (Array.isArray(items)) {
-      processedItems = items;
-    }
-
-    // Calculate amounts if not provided
-    const calculatedTotalAmount = totalAmount || processedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const calculatedFinalAmount = finalAmount || (calculatedTotalAmount + (parseFloat(gst) || 0) + (parseFloat(incomeTax) || 0) - (parseFloat(discount) || 0));
-
-    // Generate QR code if not provided
-    let generatedQRCode = qrCode;
-    if (!qrCode) {
-      try {
-        const qrData = JSON.stringify({
-          invoiceNumber,
-          buyerInfo,
-          totalAmount: calculatedTotalAmount,
-          finalAmount: calculatedFinalAmount,
-          irn
-        });
-        generatedQRCode = await QRCode.toDataURL(qrData);
-      } catch (qrError) {
-        console.log('QR code generation failed, using null:', qrError.message);
-        generatedQRCode = null;
-      }
-    }
-
-    const invoice = new Invoice({
-      invoiceNumber,
-      buyerInfo: buyerInfo || null, // Handle as string for now
-      sellerInfo: null, // Will be set later if needed
-      items: processedItems,
-      totalAmount: calculatedTotalAmount,
-      discount: parseFloat(discount) || 0,
-      gst: parseFloat(gst) || 0,
-      incomeTax: parseFloat(incomeTax) || 0,
-      finalAmount: calculatedFinalAmount,
-      digitalSignature,
-      irn,
-      qrCode: generatedQRCode
     });
 
-    await invoice.save();
+    const savedInvoice = await invoice.save();
+    
+    // Populate the saved invoice with buyer and seller data
+    const populatedInvoice = await Invoice.findById(savedInvoice._id)
+      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address')
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone');
 
-    // Export to Excel (optional - can be commented out if causing issues)
-    try {
-      const invoiceData = [
-        {
-          'Invoice Number': invoice.invoiceNumber,
-          'Buyer Info': invoice.buyerInfo,
-          'Total Amount': invoice.totalAmount,
-          'Discount': invoice.discount,
-          'GST': invoice.gst,
-          'Income Tax': invoice.incomeTax,
-          'Final Amount': invoice.finalAmount,
-          'Issued Date': invoice.issuedDate,
-          'Status': invoice.status,
-        },
-      ];
-      exportToExcel(invoiceData, `invoice_${invoice.invoiceNumber}`);
-    } catch (exportError) {
-      console.log('Excel export failed:', exportError.message);
-    }
-
-    res.status(201).json(invoice);
+    res.status(201).json(populatedInvoice);
   } catch (error) {
-    console.error('Invoice creation error:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error creating invoice:', error);
+    res.status(500).json({ error: 'Failed to create invoice' });
   }
 };
 
-// Get All Invoices
-exports.getInvoices = async (req, res) => {
+// Generate PDF for specific invoice
+exports.generateInvoicePDF = async (req, res) => {
   try {
-    const invoices = await Invoice.find();
-    res.json(invoices);
-  } catch (error) {
-    console.error('Error fetching invoices:', error);
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Get Single Invoice
-exports.getInvoiceById = async (req, res) => {
-  try {
-    const invoice = await Invoice.findById(req.params.id).populate('buyerInfo').populate('sellerInfo');
-    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
-    res.json(invoice);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// Delete Invoice
-exports.deleteInvoice = async (req, res) => {
-  try {
-    const invoice = await Invoice.findByIdAndDelete(req.params.id);
-    if (!invoice) return res.status(404).json({ error: 'Invoice not found' });
-    res.json({ message: 'Invoice deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-// 🔄 Update Invoice
-exports.updateInvoice = async (req, res) => {
-  try {
-    const { items, discount, gst, incomeTax, status } = req.body;
-
-    const totalAmount = items.reduce((sum, item) => {
-      return sum + item.price * item.quantity;
-    }, 0);
-
-    const finalAmount = totalAmount + gst + incomeTax - discount;
-
-    const updatedInvoice = await Invoice.findByIdAndUpdate(
-      req.params.id,
-      {
-        items,
-        discount,
-        gst,
-        incomeTax,
-        totalAmount,
-        finalAmount,
-        status,
-      },
-      { new: true }
-    );
-
-    if (!updatedInvoice) {
+    const { invoiceId } = req.params;
+    
+    // Get invoice with populated buyer and seller data
+    const invoice = await Invoice.findById(invoiceId)
+      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address phone')
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone');
+    
+    if (!invoice) {
       return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    res.json(updatedInvoice);
+    // Extract buyer and seller data
+    const buyer = invoice.buyerId;
+    const seller = invoice.sellerId;
+
+    if (!buyer || !seller) {
+      return res.status(400).json({ 
+        error: 'Buyer or Seller data not found. This invoice may not have proper buyer/seller associations.',
+        invoiceId: invoice._id,
+        hasBuyer: !!buyer,
+        hasSeller: !!seller
+      });
+    }
+
+    // Return data for PDF generation
+    res.json({
+      invoice,
+      buyer: {
+        companyName: buyer.companyName,
+        buyerSTRN: buyer.buyerSTRN,
+        buyerNTN: buyer.buyerNTN,
+        truckNo: buyer.truckNo,
+        address: buyer.address,
+        phone: buyer.phone
+      },
+      seller: {
+        companyName: seller.companyName,
+        sellerNTN: seller.sellerNTN,
+        sellerSTRN: seller.sellerSTRN,
+        address: seller.address,
+        phone: seller.phone
+      }
+    });
+
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error generating PDF data:', error);
+    res.status(500).json({ error: 'Failed to generate PDF data' });
+  }
+};
+
+// Get invoice by ID
+exports.getInvoiceById = async (req, res) => {
+  try {
+    const invoice = await Invoice.findById(req.params.id)
+      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address')
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone');
+    
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    
+    res.json(invoice);
+  } catch (error) {
+    console.error('Error fetching invoice:', error);
+    res.status(500).json({ error: 'Failed to fetch invoice' });
+  }
+};
+
+// Update invoice
+exports.updateInvoice = async (req, res) => {
+  try {
+    const invoice = await Invoice.findByIdAndUpdate(req.params.id, req.body, { new: true })
+      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address')
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone');
+    
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    
+    res.json(invoice);
+  } catch (error) {
+    console.error('Error updating invoice:', error);
+    res.status(500).json({ error: 'Failed to update invoice' });
+  }
+};
+
+// Delete invoice
+exports.deleteInvoice = async (req, res) => {
+  try {
+    const invoice = await Invoice.findByIdAndDelete(req.params.id);
+    
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+    
+    res.json({ message: 'Invoice deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting invoice:', error);
+    res.status(500).json({ error: 'Failed to delete invoice' });
+  }
+};
+
+// Migration function to fix existing invoices without proper buyer/seller IDs
+exports.migrateInvoices = async (req, res) => {
+  try {
+    // Get first available buyer and seller as defaults
+    const defaultBuyer = await Client.findOne();
+    const defaultSeller = await SellerSettings.findOne();
+    
+    if (!defaultBuyer || !defaultSeller) {
+      return res.status(400).json({ 
+        error: 'Cannot migrate: No default buyer or seller found. Please create at least one buyer and seller first.' 
+      });
+    }
+
+    // Find invoices without proper buyerId or sellerId
+    const invoicesToMigrate = await Invoice.find({
+      $or: [
+        { buyerId: { $exists: false } },
+        { sellerId: { $exists: false } },
+        { buyerId: null },
+        { sellerId: null }
+      ]
+    });
+
+    if (invoicesToMigrate.length === 0) {
+      return res.json({ message: 'No invoices need migration. All invoices already have proper buyer/seller associations.' });
+    }
+
+    // Update each invoice
+    const updatePromises = invoicesToMigrate.map(invoice => {
+      return Invoice.findByIdAndUpdate(invoice._id, {
+        buyerId: invoice.buyerId || defaultBuyer._id,
+        sellerId: invoice.sellerId || defaultSeller._id
+      }, { new: true });
+    });
+
+    const updatedInvoices = await Promise.all(updatePromises);
+
+    res.json({ 
+      message: `Successfully migrated ${updatedInvoices.length} invoices`,
+      migratedCount: updatedInvoices.length,
+      defaultBuyer: defaultBuyer.companyName,
+      defaultSeller: defaultSeller.companyName
+    });
+
+  } catch (error) {
+    console.error('Error migrating invoices:', error);
+    res.status(500).json({ error: 'Failed to migrate invoices' });
   }
 };
 

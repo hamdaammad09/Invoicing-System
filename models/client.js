@@ -1,17 +1,17 @@
-const mongoose = require('mongoose');
+const express = require('express');
+const router = express.Router();
+const clientController = require('../controllers/clientController');
 
-const clientSchema = new mongoose.Schema({
-  //id:{type :String,  unique:true ,  autoIncrement:true},
-  //name: { type: String, required: true },
-  cnic: { type: String, required: true, unique: true },
-  companyName: { type: String }, // Changed from 'company' to 'companyName'
-  buyerSTRN: { type: String }, // Buyer STRN
-  buyerNTN: { type: String }, // Buyer NTN
-  email: String,
-  phone: String,
-  address: String,
-  truckNo: { type: String }, // Truck Number
-  registeredDate: { type: Date, default: Date.now },
-});
+// Client routes for buyer/seller selection system
+router.post('/', clientController.addClient);
+router.get('/', clientController.getClients);
+router.get('/:id', clientController.getClientById);
+router.put('/:id', clientController.updateClient);
+router.delete('/:id', clientController.deleteClient);
 
-module.exports = mongoose.model('Client', clientSchema);
+// Additional routes for buyer management
+router.get('/buyers/all', clientController.getAllBuyers); // Get all clients as buyers
+router.get('/buyers/active', clientController.getActiveBuyers); // Get only active buyers
+router.post('/buyers/validate', clientController.validateBuyer); // Validate buyer data
+
+module.exports = router;

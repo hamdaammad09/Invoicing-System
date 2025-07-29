@@ -6,9 +6,21 @@ const invoiceSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  // Updated buyer and seller references
+  buyerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Client', // References the Client collection
+    required: true
+  },
+  sellerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SellerSettings', // References the SellerSettings collection
+    required: true
+  },
+  // Keep existing fields for backward compatibility
   buyerInfo: {
     type: mongoose.Schema.Types.Mixed, // Can be ObjectId or String
-    required: true,
+    required: false, // Changed to false since we're using buyerId
   },
   sellerInfo: {
     type: mongoose.Schema.Types.Mixed, // Can be ObjectId or String
