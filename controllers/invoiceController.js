@@ -105,18 +105,12 @@ exports.createInvoice = async (req, res) => {
     // Generate invoice number if not provided
     const finalInvoiceNumber = invoiceNumber || `INV-${Date.now()}`;
 
-    // Generate enhanced QR code for the invoice (FBR-compliant format)
+    // Generate QR code with specific invoice data
     const qrData = JSON.stringify({
       invoiceNumber: finalInvoiceNumber,
-      buyerSTRN: buyer.buyerSTRN,
+      buyerNTN: buyer.buyerNTN,
       sellerNTN: seller.sellerNTN,
-      sellerSTRN: seller.sellerSTRN,
-      totalValue: itemsArray.reduce((sum, item) => sum + (item.totalValue || 0), 0),
-      salesTax: itemsArray.reduce((sum, item) => sum + (item.salesTax || 0), 0),
-      extraTax: itemsArray.reduce((sum, item) => sum + (item.extraTax || 0), 0),
-      finalValue: itemsArray.reduce((sum, item) => sum + (item.finalValue || 0), 0),
-      date: new Date().toISOString(),
-      verificationCode: `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      date: new Date().toISOString()
     });
     
     console.log('🔍 Generating QR code with data:', qrData);

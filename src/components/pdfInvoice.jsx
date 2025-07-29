@@ -105,10 +105,10 @@ const generatePDFInvoice = async (invoice, buyer, seller) => {
         product: invoice.product || 'Tax Filing',
         quantity: invoice.units || 1,
         unitPrice: invoice.unitPrice || 0,
-        totalValue: invoice.totalAmount || 0,
+        totalValue: invoice.totalValue || 0,
         salesTax: invoice.salesTax || 0,
         extraTax: invoice.extraTax || 0,
-        finalValue: invoice.finalAmount || 0
+        finalValue: invoice.finalValue || 0
       }];
     }
     
@@ -199,48 +199,11 @@ const generatePDFInvoice = async (invoice, buyer, seller) => {
     
     y += 15; // Adjusted spacing after table
     
-    // ===== QR CODE SECTION =====
-    if (invoice.qrCode) {
-      try {
-        console.log('🔄 Adding QR code to PDF...');
-        
-        // Create image from QR code data URL
-        const qrImage = new Image();
-        qrImage.src = invoice.qrCode;
-        
-        // Position QR code on the right side
-        const qrSize = 40; // Size of QR code
-        const qrX = 140; // X position (right side)
-        const qrY = y; // Y position
-        
-        // Add QR code image
-        doc.addImage(qrImage, 'PNG', qrX, qrY, qrSize, qrSize);
-        
-        // Add QR code label
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'bold');
-        doc.text('QR Code', qrX + qrSize/2 - 15, qrY + qrSize + 5, { align: 'center' });
-        
-        // Add verification text
-        doc.setFontSize(6);
-        doc.setFont('helvetica', 'normal');
-        doc.text('Scan to verify invoice', qrX + qrSize/2 - 20, qrY + qrSize + 12, { align: 'center' });
-        
-        console.log('✅ QR code added successfully');
-        
-      } catch (qrError) {
-        console.error('❌ Error adding QR code:', qrError);
-        // Continue without QR code if there's an error
-      }
-    } else {
-      console.log('⚠️ No QR code found in invoice data');
-    }
-    
     // ===== SIGNATURE SECTION =====
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     
-    // Signature lines with proper spacing (adjusted to avoid QR code)
+    // Signature lines with proper spacing
     doc.line(20, y, 80, y);
     doc.line(150, y, 190, y);
     y += 5;
@@ -249,6 +212,43 @@ const generatePDFInvoice = async (invoice, buyer, seller) => {
     doc.setFont('helvetica', 'bold');
     doc.text('PREPARED BY', 20, y);
     doc.text('Authorized Signatory', 150, y);
+    
+    // ===== QR CODE SECTION (BOTTOM LEFT) =====
+    if (invoice.qrCode) {
+      try {
+        console.log('🔄 Adding QR code to PDF (bottom left)...');
+        
+        // Create image from QR code data URL
+        const qrImage = new Image();
+        qrImage.src = invoice.qrCode;
+        
+        // Position QR code at the bottom left
+        const qrSize = 45; // Size of QR code
+        const qrX = 20; // X position (left side)
+        const qrY = 250; // Y position (bottom)
+        
+        // Add QR code image
+        doc.addImage(qrImage, 'PNG', qrX, qrY, qrSize, qrSize);
+        
+        // Add QR code label below
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.text('QR Code', qrX + qrSize/2 - 15, qrY + qrSize + 5, { align: 'center' });
+        
+        // Add verification text
+        doc.setFontSize(6);
+        doc.setFont('helvetica', 'normal');
+        doc.text('Scan to verify', qrX + qrSize/2 - 12, qrY + qrSize + 12, { align: 'center' });
+        
+        console.log('✅ QR code added successfully at bottom left');
+        
+      } catch (qrError) {
+        console.error('❌ Error adding QR code:', qrError);
+        // Continue without QR code if there's an error
+      }
+    } else {
+      console.log('⚠️ No QR code found in invoice data');
+    }
     
     // Save the PDF with professional filename
     const fileName = `Invoice_${invoice.invoiceNumber || invoice._id?.slice(-6) || 'N/A'}_${buyer?.companyName || 'Client'}.pdf`;
@@ -264,4 +264,4 @@ const generatePDFInvoice = async (invoice, buyer, seller) => {
 };
 
 export { generatePDFInvoice };
-export default generatePDFInvoice;
+export default generatePDFInvoice; 
