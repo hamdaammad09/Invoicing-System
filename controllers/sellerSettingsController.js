@@ -1,14 +1,12 @@
 const SellerSettings = require('../models/sellerSettings');
 
-// Get seller settings
+// Get all seller settings
 const getSellerSettings = async (req, res) => {
   try {
-    let settings = await SellerSettings.findOne();
+    const settings = await SellerSettings.find().sort({ createdAt: -1 });
     
-    if (!settings) {
-      // Create default settings if none exist
-      settings = new SellerSettings();
-      await settings.save();
+    if (settings.length === 0) {
+      return res.json([]);
     }
     
     res.json(settings);
@@ -23,13 +21,7 @@ const createSellerSettings = async (req, res) => {
   try {
     const { companyName, sellerNTN, sellerSTRN, address, phone, invoiceNumber } = req.body;
     
-    // Check if settings already exist
-    const existingSettings = await SellerSettings.findOne();
-    if (existingSettings) {
-      return res.status(400).json({ error: 'Seller settings already exist. Use PUT to update.' });
-    }
-    
-    // Create new settings
+    // Create new settings (allow multiple sellers)
     const settings = new SellerSettings({
       companyName,
       sellerNTN,
@@ -47,15 +39,16 @@ const createSellerSettings = async (req, res) => {
   }
 };
 
-// Update seller settings
+// Update specific seller settings by ID
 const updateSellerSettings = async (req, res) => {
   try {
+    const { id } = req.params;
     const { companyName, sellerNTN, sellerSTRN, address, phone, invoiceNumber } = req.body;
     
-    let settings = await SellerSettings.findOne();
+    const settings = await SellerSettings.findById(id);
     
     if (!settings) {
-      settings = new SellerSettings();
+      return res.status(404).json({ error: 'Seller settings not found' });
     }
     
     // Update fields
@@ -76,8 +69,27 @@ const updateSellerSettings = async (req, res) => {
   }
 };
 
+// Delete seller settings by ID
+const deleteSellerSettings = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const settings = await SellerSettings.findByIdAndDelete(id);
+    
+    if (!settings) {
+      return res.status(404).json({ error: 'Seller settings not found' });
+    }
+    
+    res.json({ message: 'Seller settings deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting seller settings:', error);
+    res.status(500).json({ error: 'Failed to delete seller settings' });
+  }
+};
+
 module.exports = {
   getSellerSettings,
   createSellerSettings,
-  updateSellerSettings
+  updateSellerSettings,
+  deleteSellerSettings
 }; 
