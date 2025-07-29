@@ -21,12 +21,13 @@ exports.getInvoices = async (req, res) => {
 // Get available buyers for dropdown
 exports.getAvailableBuyers = async (req, res) => {
   try {
-    const buyers = await Client.find({}, 'companyName buyerSTRN buyerNTN truckNo address')
+    const buyers = await Client.find({}, 'companyName buyerSTRN buyerNTN truckNo address phone')
       .sort({ companyName: 1 });
     
+    console.log(`✅ Found ${buyers.length} available buyers`);
     res.json(buyers);
   } catch (error) {
-    console.error('Error fetching buyers:', error);
+    console.error('❌ Error fetching buyers:', error);
     res.status(500).json({ error: 'Failed to fetch buyers' });
   }
 };
@@ -37,9 +38,10 @@ exports.getAvailableSellers = async (req, res) => {
     const sellers = await SellerSettings.find({}, 'companyName sellerNTN sellerSTRN address phone')
       .sort({ companyName: 1 });
     
+    console.log(`✅ Found ${sellers.length} available sellers`);
     res.json(sellers);
   } catch (error) {
-    console.error('Error fetching sellers:', error);
+    console.error('❌ Error fetching sellers:', error);
     res.status(500).json({ error: 'Failed to fetch sellers' });
   }
 };
@@ -47,15 +49,35 @@ exports.getAvailableSellers = async (req, res) => {
 // Create new invoice
 exports.createInvoice = async (req, res) => {
   try {
-    const { buyerId, sellerId, items, totalAmount, discount, gst, incomeTax, finalAmount } = req.body;
+    const { 
+      buyerId, 
+      sellerId, 
+      items, 
+      totalAmount, 
+      discount, 
+      gst, 
+      incomeTax, 
+      finalAmount,
+      invoiceNumber,
+      status,
+      issuedDate
+    } = req.body;
+
+    console.log('🔄 Creating invoice with data:', {
+      buyerId,
+      sellerId,
+      items,
+      totalAmount,
+      finalAmount
+    });
 
     // Validate that buyerId and sellerId are provided
     if (!buyerId) {
-      return res.status(400).json({ error: 'buyerId is required' });
+      return res.status(400).json({ error: 'buyerId is required. Please select a buyer from the dropdown.' });
     }
     
     if (!sellerId) {
-      return res.status(400).json({ error: 'sellerId is required' });
+      return res.status(400).json({ error: 'sellerId is required. Please select a seller from the dropdown.' });
     }
 
     // Validate buyer and seller exist
@@ -63,19 +85,26 @@ exports.createInvoice = async (req, res) => {
     const seller = await SellerSettings.findById(sellerId);
     
     if (!buyer) {
-      return res.status(400).json({ error: 'Buyer not found with the provided buyerId' });
+      return res.status(400).json({ 
+        error: 'Selected buyer not found. Please refresh the page and select a valid buyer.' 
+      });
     }
     
     if (!seller) {
-      return res.status(400).json({ error: 'Seller not found with the provided sellerId' });
+      return res.status(400).json({ 
+        error: 'Selected seller not found. Please refresh the page and select a valid seller.' 
+      });
     }
 
-    // Generate invoice number
-    const invoiceNumber = `INV-${Date.now()}`;
+    console.log('✅ Buyer found:', buyer.companyName);
+    console.log('✅ Seller found:', seller.companyName);
+
+    // Generate invoice number if not provided
+    const finalInvoiceNumber = invoiceNumber || `INV-${Date.now()}`;
 
     // Generate QR code for the invoice
     const qrData = JSON.stringify({
-      invoiceNumber,
+      invoiceNumber: finalInvoiceNumber,
       buyerId,
       sellerId,
       totalAmount,
@@ -84,30 +113,68 @@ exports.createInvoice = async (req, res) => {
     
     const qrCode = await QRCode.toDataURL(qrData);
 
+    // Prepare items array
+    let itemsArray = [];
+    if (items && Array.isArray(items)) {
+      itemsArray = items;
+    } else if (items && typeof items === 'string') {
+      // Handle case where items is sent as a string
+      try {
+        itemsArray = JSON.parse(items);
+      } catch (e) {
+        // If parsing fails, create a single item
+        itemsArray = [{
+          product: items,
+          quantity: 1,
+          unitPrice: totalAmount || 0,
+          totalValue: totalAmount || 0,
+          salesTax: gst || 0,
+          extraTax: 0,
+          finalValue: finalAmount || totalAmount || 0
+        }];
+      }
+    } else {
+      // Default item if no items provided
+      itemsArray = [{
+        product: 'Tax Filing',
+        quantity: 1,
+        unitPrice: totalAmount || 0,
+        totalValue: totalAmount || 0,
+        salesTax: gst || 0,
+        extraTax: 0,
+        finalValue: finalAmount || totalAmount || 0
+      }];
+    }
+
     const invoice = new Invoice({
-      invoiceNumber,
+      invoiceNumber: finalInvoiceNumber,
       buyerId,
       sellerId,
-      items,
+      items: itemsArray,
       totalAmount,
       discount,
       gst,
       incomeTax,
       finalAmount,
-      qrCode
+      qrCode,
+      status,
+      issuedDate: issuedDate ? new Date(issuedDate) : new Date()
     });
 
     const savedInvoice = await invoice.save();
     
+    console.log('✅ Invoice saved with ID:', savedInvoice._id);
+    
     // Populate the saved invoice with buyer and seller data
     const populatedInvoice = await Invoice.findById(savedInvoice._id)
-      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address')
+      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address phone')
       .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone');
 
+    console.log('✅ Invoice created successfully with populated data');
     res.status(201).json(populatedInvoice);
   } catch (error) {
-    console.error('Error creating invoice:', error);
-    res.status(500).json({ error: 'Failed to create invoice' });
+    console.error('❌ Error creating invoice:', error);
+    res.status(500).json({ error: 'Failed to create invoice. Please try again.' });
   }
 };
 
@@ -334,6 +401,82 @@ exports.debugInvoices = async (req, res) => {
   } catch (error) {
     console.error('Error debugging invoices:', error);
     res.status(500).json({ error: 'Failed to debug invoices' });
+  }
+};
+
+// Get invoice details with buyer/seller selection for PDF
+exports.getInvoiceForPDF = async (req, res) => {
+  try {
+    const { invoiceId, selectedBuyerId, selectedSellerId } = req.params;
+    
+    console.log('🔍 Getting invoice for PDF:', {
+      invoiceId,
+      selectedBuyerId,
+      selectedSellerId
+    });
+
+    // Get the invoice
+    const invoice = await Invoice.findById(invoiceId);
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
+    }
+
+    // Get buyer data (use selected buyer or invoice's buyer)
+    let buyer;
+    if (selectedBuyerId && selectedBuyerId !== 'default') {
+      buyer = await Client.findById(selectedBuyerId);
+      console.log('✅ Using selected buyer:', buyer?.companyName);
+    } else {
+      buyer = await Client.findById(invoice.buyerId);
+      console.log('✅ Using invoice default buyer:', buyer?.companyName);
+    }
+
+    // Get seller data (use selected seller or invoice's seller)
+    let seller;
+    if (selectedSellerId && selectedSellerId !== 'default') {
+      seller = await SellerSettings.findById(selectedSellerId);
+      console.log('✅ Using selected seller:', seller?.companyName);
+    } else {
+      seller = await SellerSettings.findById(invoice.sellerId);
+      console.log('✅ Using invoice default seller:', seller?.companyName);
+    }
+
+    if (!buyer || !seller) {
+      return res.status(400).json({ 
+        error: 'Buyer or Seller data not found. Please ensure valid buyer and seller are selected.',
+        hasBuyer: !!buyer,
+        hasSeller: !!seller
+      });
+    }
+
+    // Return data for PDF generation
+    const pdfData = {
+      invoice,
+      buyer: {
+        companyName: buyer.companyName,
+        buyerSTRN: buyer.buyerSTRN,
+        buyerNTN: buyer.buyerNTN,
+        truckNo: buyer.truckNo,
+        address: buyer.address,
+        phone: buyer.phone
+      },
+      seller: {
+        companyName: seller.companyName,
+        sellerNTN: seller.sellerNTN,
+        sellerSTRN: seller.sellerSTRN,
+        address: seller.address,
+        phone: seller.phone
+      },
+      selectedBuyerId: selectedBuyerId,
+      selectedSellerId: selectedSellerId
+    };
+
+    console.log('📤 Sending PDF data with selected buyer/seller');
+    res.json(pdfData);
+
+  } catch (error) {
+    console.error('❌ Error getting invoice for PDF:', error);
+    res.status(500).json({ error: 'Failed to get invoice data for PDF' });
   }
 };
 

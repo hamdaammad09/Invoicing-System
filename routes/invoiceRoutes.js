@@ -26,8 +26,11 @@ router.put('/:id', invoiceController.updateInvoice);
 // Delete invoice
 router.delete('/:id', invoiceController.deleteInvoice);
 
-// Generate PDF for specific invoice
+// Generate PDF for specific invoice (original)
 router.get('/:invoiceId/pdf-data', invoiceController.generateInvoicePDF);
+
+// Get invoice with buyer/seller selection for PDF
+router.get('/:invoiceId/pdf/:selectedBuyerId/:selectedSellerId', invoiceController.getInvoiceForPDF);
 
 // Migration route to fix existing invoices
 router.post('/migrate', invoiceController.migrateInvoices);
