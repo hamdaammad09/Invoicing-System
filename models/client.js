@@ -1,17 +1,48 @@
-const express = require('express');
-const router = express.Router();
-const clientController = require('../controllers/clientController');
+const mongoose = require('mongoose');
 
-// Client routes for buyer/seller selection system
-router.post('/', clientController.addClient);
-router.get('/', clientController.getClients);
-router.get('/:id', clientController.getClientById);
-router.put('/:id', clientController.updateClient);
-router.delete('/:id', clientController.deleteClient);
+const clientSchema = new mongoose.Schema({
+  companyName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  buyerSTRN: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+  buyerNTN: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
+  truckNo: {
+    type: String,
+    trim: true
+  },
+  address: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  phone: {
+    type: String,
+    trim: true
+  },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active'
+  }
+}, {
+  timestamps: true
+});
 
-// Additional routes for buyer management
-router.get('/buyers/all', clientController.getAllBuyers); // Get all clients as buyers
-router.get('/buyers/active', clientController.getActiveBuyers); // Get only active buyers
-router.post('/buyers/validate', clientController.validateBuyer); // Validate buyer data
-
-module.exports = router;
+module.exports = mongoose.model('Client', clientSchema);

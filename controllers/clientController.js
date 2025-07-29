@@ -65,3 +65,55 @@ exports.deleteClient = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Get all clients as buyers
+exports.getAllBuyers = async (req, res) => {
+  try {
+    const buyers = await Client.find({}, 'companyName buyerSTRN buyerNTN truckNo address phone')
+      .sort({ companyName: 1 });
+    res.status(200).json(buyers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get only active buyers
+exports.getActiveBuyers = async (req, res) => {
+  try {
+    const activeBuyers = await Client.find({ status: 'active' }, 'companyName buyerSTRN buyerNTN truckNo address phone')
+      .sort({ companyName: 1 });
+    res.status(200).json(activeBuyers);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Validate buyer data
+exports.validateBuyer = async (req, res) => {
+  try {
+    const { buyerSTRN, buyerNTN } = req.body;
+    
+    // Check if buyer with this STRN or NTN already exists
+    const existingBuyer = await Client.findOne({
+      $or: [
+        { buyerSTRN: buyerSTRN },
+        { buyerNTN: buyerNTN }
+      ]
+    });
+    
+    if (existingBuyer) {
+      return res.status(409).json({ 
+        message: 'Buyer with this STRN or NTN already exists',
+        existingBuyer: {
+          companyName: existingBuyer.companyName,
+          buyerSTRN: existingBuyer.buyerSTRN,
+          buyerNTN: existingBuyer.buyerNTN
+        }
+      });
+    }
+    
+    res.status(200).json({ message: 'Buyer data is valid' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
