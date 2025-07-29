@@ -111,13 +111,13 @@ exports.createInvoice = async (req, res) => {
     // Generate invoice number if not provided
     const finalInvoiceNumber = invoiceNumber || `INV-${Date.now()}`;
 
-    // Generate QR code with specific invoice data
-    const qrData = JSON.stringify({
+    // Generate QR code with specific invoice data (with prefix to avoid phone number detection)
+    const qrData = `TAX_INVOICE:${JSON.stringify({
       invoiceNumber: finalInvoiceNumber,
       buyerNTN: buyer.buyerNTN,
       sellerNTN: seller.sellerNTN,
       date: issuedDate ? new Date(issuedDate).toISOString() : new Date().toISOString()
-    });
+    })}`;
     
     console.log('🔍 QR Code Data:', qrData);
     
