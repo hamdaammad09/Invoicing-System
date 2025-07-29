@@ -9,13 +9,11 @@ const clientSchema = new mongoose.Schema({
   buyerSTRN: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
   buyerNTN: {
     type: String,
     required: true,
-    unique: true,
     trim: true
   },
   truckNo: {
