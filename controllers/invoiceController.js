@@ -70,8 +70,14 @@ exports.createInvoice = async (req, res) => {
       buyerId,
       sellerId,
       items,
-      totalAmount,
-      finalAmount
+      product,
+      units,
+      unitPrice,
+      totalValue,
+      salesTax,
+      extraTax,
+      finalValue,
+      issuedDate
     });
 
     // Validate that buyerId and sellerId are provided
@@ -148,11 +154,11 @@ exports.createInvoice = async (req, res) => {
         itemsArray = [{
           product: items,
           quantity: 1,
-          unitPrice: totalAmount || 0,
-          totalValue: totalAmount || 0,
-          salesTax: gst || 0,
-          extraTax: 0,
-          finalValue: finalAmount || totalAmount || 0
+          unitPrice: totalValue || 0,
+          totalValue: totalValue || 0,
+          salesTax: salesTax || 0,
+          extraTax: extraTax || 0,
+          finalValue: finalValue || totalValue || 0
         }];
       }
     } else {
@@ -160,11 +166,11 @@ exports.createInvoice = async (req, res) => {
       itemsArray = [{
         product: 'Tax Filing',
         quantity: 1,
-        unitPrice: totalAmount || 0,
-        totalValue: totalAmount || 0,
-        salesTax: gst || 0,
-        extraTax: 0,
-        finalValue: finalAmount || totalAmount || 0
+        unitPrice: totalValue || 0,
+        totalValue: totalValue || 0,
+        salesTax: salesTax || 0,
+        extraTax: extraTax || 0,
+        finalValue: finalValue || totalValue || 0
       }];
     }
 
