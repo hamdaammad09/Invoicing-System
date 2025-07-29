@@ -9,10 +9,6 @@ exports.createFbrInvoice = async (req, res) => {
     // Validate required fields
     const { invoiceNumber, client, amount, items, hsCode, fbrEnvironment } = req.body;
     
-    if (!invoiceNumber) {
-      return res.status(400).json({ message: 'invoiceNumber is required' });
-    }
-    
     if (!client) {
       return res.status(400).json({ message: 'client is required' });
     }
@@ -20,6 +16,9 @@ exports.createFbrInvoice = async (req, res) => {
     if (!amount) {
       return res.status(400).json({ message: 'amount is required' });
     }
+    
+    // Generate invoice number if not provided
+    const finalInvoiceNumber = invoiceNumber || `FBR-${Date.now()}`;
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: 'items array is required and must not be empty' });
@@ -42,7 +41,13 @@ exports.createFbrInvoice = async (req, res) => {
       }
     }
     
-    const fbrInvoice = new FbrInvoice(req.body);
+    // Prepare the data with generated invoice number
+    const fbrInvoiceData = {
+      ...req.body,
+      invoiceNumber: finalInvoiceNumber
+    };
+    
+    const fbrInvoice = new FbrInvoice(fbrInvoiceData);
     await fbrInvoice.save();
     
     console.log('✅ FBR invoice created successfully:', fbrInvoice._id);
