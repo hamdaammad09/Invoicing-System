@@ -199,27 +199,6 @@ const generatePDFInvoice = async (invoice, buyer, seller) => {
     
     y += 15; // Adjusted spacing after table
     
-    // ===== TOTALS SECTION =====
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    
-    // Calculate totals
-    const totalAmount = invoice.totalAmount || 0;
-    const discount = invoice.discount || 0;
-    const gst = invoice.gst || 0;
-    const finalAmount = invoice.finalAmount || 0;
-    
-    // Right-aligned totals
-    const totalsX = 120;
-    doc.text(`Total Amount: ₹${totalAmount.toLocaleString()}`, totalsX, y);
-    y += 8;
-    doc.text(`Discount: ₹${discount.toLocaleString()}`, totalsX, y);
-    y += 8;
-    doc.text(`GST: ₹${gst.toLocaleString()}`, totalsX, y);
-    y += 8;
-    doc.text(`Final Amount: ₹${finalAmount.toLocaleString()}`, totalsX, y);
-    y += 15;
-    
     // ===== SIGNATURE SECTION =====
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');

@@ -43,20 +43,7 @@ const invoiceSchema = new mongoose.Schema({
       finalValue: Number, // Value including GST & Extra Tax
     }
   ],
-  gst: {
-    type: Number,
-    default: 0,
-  },
-  incomeTax: {
-    type: Number,
-    default: 0,
-  },
-  totalAmount: Number,
-  discount: {
-    type: Number,
-    default: 0,
-  },
-  finalAmount: Number,
+  // Removed totalAmount, discount, gst, incomeTax, finalAmount fields
   digitalSignature: {
     type: String,
   },
