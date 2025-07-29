@@ -110,8 +110,10 @@ exports.createInvoice = async (req, res) => {
       invoiceNumber: finalInvoiceNumber,
       buyerNTN: buyer.buyerNTN,
       sellerNTN: seller.sellerNTN,
-      date: new Date().toISOString()
+      date: issuedDate ? new Date(issuedDate).toISOString() : new Date().toISOString()
     });
+    
+    console.log('🔍 QR Code Data:', qrData);
     
     console.log('🔍 Generating QR code with data:', qrData);
     const qrCode = await QRCode.toDataURL(qrData, {
