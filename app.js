@@ -36,7 +36,7 @@ app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:3001',
-    'https://consultancy-frontend-eight.vercel.app',
+    'https://hsoftworks-phi.vercel.app',
     'https://*.vercel.app' 
   ],
   credentials: true,
@@ -50,7 +50,7 @@ app.use((req, res, next) => {
   const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:3001',
-    'https://consultancy-frontend-eight.vercel.app'
+    'https://hsoftworks-phi.vercel.app'
   ];
   
   const origin = req.headers.origin;
@@ -116,7 +116,7 @@ app.get('/', async (req, res) => {
       corsEnabled: true,
       deployment: 'final-cors-fix',
       corsHeaders: {
-        'Access-Control-Allow-Origin': 'https://consultancy-frontend-eight.vercel.app',
+        'Access-Control-Allow-Origin': 'https://hsoftworks-phi.vercel.app',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
       },
