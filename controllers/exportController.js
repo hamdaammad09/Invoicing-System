@@ -4,7 +4,6 @@ const SellerSettings = require('../models/sellerSettings');
 const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const path = require('path');
-const { Parser } = require('json2csv');
 
 // Excel Export
 exports.exportInvoicesToExcel = async (req, res) => {

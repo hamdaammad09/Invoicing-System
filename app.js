@@ -10,17 +10,27 @@ const connectDB = require('./config/db');
 // Create Express app
 const app = express();
 
-// Connect to MongoDB (with better error handling)
+// Connect to MongoDB (with better error handling for serverless)
 let dbConnected = false;
-let dbConnectionPromise = connectDB().then(connected => {
-  dbConnected = connected;
-  console.log('Database connection status:', connected);
-  return connected;
-}).catch(err => {
-  console.error('Failed to connect to MongoDB:', err);
-  dbConnected = false;
-  return false;
-});
+let dbConnectionPromise = null;
+
+const initializeDB = async () => {
+  if (!dbConnectionPromise) {
+    dbConnectionPromise = connectDB().then(connected => {
+      dbConnected = connected;
+      console.log('Database connection status:', connected);
+      return connected;
+    }).catch(err => {
+      console.error('Failed to connect to MongoDB:', err);
+      dbConnected = false;
+      return false;
+    });
+  }
+  return dbConnectionPromise;
+};
+
+// Initialize DB connection
+initializeDB();
 
 // Middleware
 app.use((req, res, next) => {
@@ -104,7 +114,7 @@ app.use('/api/seller-settings', sellerSettingsRoutes);
 app.get('/', async (req, res) => {
   try {
     // Wait for database connection to complete
-    const dbStatus = await dbConnectionPromise;
+    const dbStatus = await initializeDB();
     
     res.json({
       message: '✅ API is running...',
@@ -112,9 +122,9 @@ app.get('/', async (req, res) => {
       status: 'healthy',
       database: dbStatus ? 'connected' : 'disconnected',
       mongoUri: process.env.MONGO_URI ? 'set' : 'not set',
-      version: '2.0.4',
+      version: '2.0.5',
       corsEnabled: true,
-      deployment: 'final-cors-fix',
+      deployment: 'vercel-serverless-fix',
       corsHeaders: {
         'Access-Control-Allow-Origin': 'https://hsoftworks-phi.vercel.app',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -123,13 +133,14 @@ app.get('/', async (req, res) => {
       buildId: Date.now()
     });
   } catch (error) {
+    console.error('Health check error:', error);
     res.json({
       message: '✅ API is running...',
       timestamp: new Date().toISOString(),
       status: 'healthy',
       database: 'error',
       error: error.message,
-      version: '2.0.4'
+      version: '2.0.5'
     });
   }
 });
@@ -141,13 +152,25 @@ app.get('/cors-test', (req, res) => {
     timestamp: new Date().toISOString(),
     origin: req.headers.origin || 'No origin header',
     method: req.method,
-    version: '2.0.4',
+    version: '2.0.5',
     corsHeaders: {
       'Access-Control-Allow-Origin': req.headers.origin || '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
     },
     buildId: Date.now()
+  });
+});
+
+// ===== Vercel Test Route =====
+app.get('/vercel-test', (req, res) => {
+  res.json({
+    message: 'Vercel deployment is working!',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    mongoUri: process.env.MONGO_URI ? 'set' : 'not set',
+    version: '2.0.5',
+    deployment: 'vercel-serverless-fix'
   });
 });
 
