@@ -42,6 +42,7 @@ app.use((req, res, next) => {
   next();
 });
 
+// CORS configuration (simplified and optimized)
 app.use(cors({
   origin: [
     'http://localhost:3000',
@@ -55,35 +56,6 @@ app.use(cors({
   exposedHeaders: ['Content-Disposition']
 }));
 
-// Additional CORS headers for all responses
-app.use((req, res, next) => {
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://hsoftworks-phi.vercel.app'
-  ];
-  
-  const origin = req.headers.origin;
-  console.log('Request origin:', origin);
-  
-  if (allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-    console.log('CORS header set for origin:', origin);
-  } else {
-    console.log('Origin not allowed:', origin);
-  }
-  
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    console.log('Handling OPTIONS request');
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
 app.use(express.json());
 
 const clientRoutes = require('./routes/clientRoutes');
@@ -122,9 +94,9 @@ app.get('/', async (req, res) => {
       status: 'healthy',
       database: dbStatus ? 'connected' : 'disconnected',
       mongoUri: process.env.MONGO_URI ? 'set' : 'not set',
-      version: '2.0.5',
+      version: '2.0.6',
       corsEnabled: true,
-      deployment: 'vercel-serverless-fix',
+      deployment: 'fixed-issues',
       corsHeaders: {
         'Access-Control-Allow-Origin': 'https://hsoftworks-phi.vercel.app',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -140,7 +112,7 @@ app.get('/', async (req, res) => {
       status: 'healthy',
       database: 'error',
       error: error.message,
-      version: '2.0.5'
+      version: '2.0.6'
     });
   }
 });
@@ -152,7 +124,7 @@ app.get('/cors-test', (req, res) => {
     timestamp: new Date().toISOString(),
     origin: req.headers.origin || 'No origin header',
     method: req.method,
-    version: '2.0.5',
+    version: '2.0.6',
     corsHeaders: {
       'Access-Control-Allow-Origin': req.headers.origin || '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -169,8 +141,8 @@ app.get('/vercel-test', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     mongoUri: process.env.MONGO_URI ? 'set' : 'not set',
-    version: '2.0.5',
-    deployment: 'vercel-serverless-fix'
+    version: '2.0.6',
+    deployment: 'fixed-issues'
   });
 });
 
@@ -196,6 +168,7 @@ app.get('/api-test', (req, res) => {
       'GET /api/dashboard/stats',
       'GET /api/users',
       'GET /api/export/excel',
+      'GET /api/export/csv',
       'GET /api/export/test',
       'GET /api/fbr-invoices',
       'GET /api/tasks'
@@ -218,4 +191,4 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-module.exports = app; 
+module.exports = app;
