@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const fbrInvoiceController = require('../controllers/fbrInvoiceController');
+const fbrApiSettingController = require('../controllers/fbrApiSettingController');
 
 // FBR API Settings Routes
-router.get('/', fbrInvoiceController.getFbrApiSettings);
-router.post('/', fbrInvoiceController.saveFbrApiSettings);
-router.delete('/', fbrInvoiceController.clearFbrApiSettings);
-router.get('/test', fbrInvoiceController.testFBRConnection);
+router.get('/', fbrApiSettingController.getApiSettings);
+router.post('/', fbrApiSettingController.saveApiSettings);
 
 module.exports = router;

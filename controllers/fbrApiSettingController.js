@@ -1,4 +1,4 @@
-const FbrApiSettings = require('../models/fbrApiSettings');
+const FbrApiSettings = require('../models/fbrApiSetting');
 
 // Get FBR API Settings (only one should exist)
 exports.getApiSettings = async (req, res) => {

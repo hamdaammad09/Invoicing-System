@@ -1,0 +1,886 @@
+{
+  "info": {
+    "name": "Tax Consultancy Backend API",
+    "description": "Complete API collection for testing the Tax Consultancy Backend with FBR integration, HS codes, and task management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "clientId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "invoiceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "taskId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serviceId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "API Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            }
+          }
+        },
+        {
+          "name": "CORS Test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cors-test",
+              "host": ["{{baseUrl}}"],
+              "path": ["cors-test"]
+            }
+          }
+        },
+        {
+          "name": "API Routes Test",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api-test",
+              "host": ["{{baseUrl}}"],
+              "path": ["api-test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Dashboard Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "dashboard"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clients",
+      "item": [
+        {
+          "name": "Get All Clients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clients",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "clients"]
+            }
+          }
+        },
+        {
+          "name": "Create New Client",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"Test Company Ltd\",\n  \"buyerSTRN\": \"1234567890123\",\n  \"buyerNTN\": \"1234567-8\",\n  \"truckNo\": \"ABC-123\",\n  \"address\": \"123 Test Street, Karachi\",\n  \"phone\": \"+92-300-1234567\",\n  \"email\": \"test@company.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/clients",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "clients"]
+            }
+          }
+        },
+        {
+          "name": "Get Client by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clients/{{clientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "clients", "{{clientId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Client",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"Updated Company Ltd\",\n  \"buyerSTRN\": \"1234567890123\",\n  \"buyerNTN\": \"1234567-8\",\n  \"truckNo\": \"ABC-123\",\n  \"address\": \"456 Updated Street, Karachi\",\n  \"phone\": \"+92-300-1234567\",\n  \"email\": \"updated@company.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/clients/{{clientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "clients", "{{clientId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Client",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/clients/{{clientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "clients", "{{clientId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "Get All Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services"]
+            }
+          }
+        },
+        {
+          "name": "Get Service Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/services/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Create New Service",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tax Consultation\",\n  \"type\": \"Consultation\",\n  \"category\": \"Tax Consultancy\",\n  \"description\": \"Professional tax consultation services for businesses\",\n  \"price\": 5000,\n  \"duration\": \"2 hours\",\n  \"status\": \"active\",\n  \"isProduct\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services"]
+            }
+          }
+        },
+        {
+          "name": "Create Product Service with HS Code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Poultry Feed Supply\",\n  \"type\": \"Poultry\",\n  \"category\": \"Trading Services\",\n  \"description\": \"High-quality poultry feed for commercial farms\",\n  \"price\": 25000,\n  \"duration\": \"1 week\",\n  \"status\": \"active\",\n  \"isProduct\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/services",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services"]
+            }
+          }
+        },
+        {
+          "name": "Search Services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/services/search?query=tax",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services", "search"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "tax"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Services by Category",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/services/category/Tax Consultancy",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services", "category", "Tax Consultancy"]
+            }
+          }
+        },
+        {
+          "name": "Get Services by Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/services/type/Consultation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services", "type", "Consultation"]
+            }
+          }
+        },
+        {
+          "name": "Get Services by Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/services/status/active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services", "status", "active"]
+            }
+          }
+        },
+        {
+          "name": "Get Service by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/services/{{serviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services", "{{serviceId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Service",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Tax Consultation\",\n  \"type\": \"Consultation\",\n  \"category\": \"Tax Consultancy\",\n  \"description\": \"Updated professional tax consultation services\",\n  \"price\": 6000,\n  \"duration\": \"3 hours\",\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/services/{{serviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services", "{{serviceId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Service",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/services/{{serviceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "services", "{{serviceId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Get All Tasks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Get Task Statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/stats",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "stats"]
+            }
+          }
+        },
+        {
+          "name": "Create General Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Client Meeting\",\n  \"description\": \"Schedule meeting with client for tax consultation\",\n  \"dueDate\": \"2024-01-15\",\n  \"priority\": \"medium\",\n  \"status\": \"pending\",\n  \"taskType\": \"client_communication\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Create FBR Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"FBR Submission for Invoice #123\",\n  \"description\": \"Submit invoice to FBR for approval and get IRN\",\n  \"dueDate\": \"2024-01-10\",\n  \"priority\": \"high\",\n  \"status\": \"pending\",\n  \"taskType\": \"fbr_submission\",\n  \"fbrReference\": \"FBR-2024-001\",\n  \"invoiceNumber\": \"INV-123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks"]
+            }
+          }
+        },
+        {
+          "name": "Get Tasks by Type",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/type/fbr_submission",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "type", "fbr_submission"]
+            }
+          }
+        },
+        {
+          "name": "Get Tasks by Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/status/pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "status", "pending"]
+            }
+          }
+        },
+        {
+          "name": "Get Tasks by Priority",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/priority/high",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "priority", "high"]
+            }
+          }
+        },
+        {
+          "name": "Get Task by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Task Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "{{taskId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Task",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tasks/{{taskId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "tasks", "{{taskId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "HS Codes",
+      "item": [
+        {
+          "name": "Lookup HS Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hscodes/lookup?description=tax consultation",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hscodes", "lookup"],
+              "query": [
+                {
+                  "key": "description",
+                  "value": "tax consultation"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get HS Code Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hscodes/suggestions?description=poultry&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hscodes", "suggestions"],
+              "query": [
+                {
+                  "key": "description",
+                  "value": "poultry"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Validate HS Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hscodes/validate?hsCode=9983.99.00",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hscodes", "validate"],
+              "query": [
+                {
+                  "key": "hsCode",
+                  "value": "9983.99.00"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get All HS Codes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hscodes/all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hscodes", "all"]
+            }
+          }
+        },
+        {
+          "name": "HS Code Auto-complete",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hscodes/autocomplete?query=software&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hscodes", "autocomplete"],
+              "query": [
+                {
+                  "key": "query",
+                  "value": "software"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Test HS Code Database",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/hscodes/test",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "hscodes", "test"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Export",
+      "item": [
+        {
+          "name": "Export to CSV",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/export/csv?includeHSCodes=true&includeFBRData=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "export", "csv"],
+              "query": [
+                {
+                  "key": "includeHSCodes",
+                  "value": "true"
+                },
+                {
+                  "key": "includeFBRData",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export to Excel",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/export/excel?includeClientDetails=true&includeSellerDetails=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "export", "excel"],
+              "query": [
+                {
+                  "key": "includeClientDetails",
+                  "value": "true"
+                },
+                {
+                  "key": "includeSellerDetails",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Export to PDF",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/export/pdf",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "export", "pdf"]
+            }
+          }
+        },
+        {
+          "name": "Test Export",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/export/test",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "export", "test"]
+            }
+          }
+        },
+        {
+          "name": "Debug Export",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/export/debug",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "export", "debug"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invoices",
+      "item": [
+        {
+          "name": "Get All Invoices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoices"]
+            }
+          }
+        },
+        {
+          "name": "Get Available Buyers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices/available-buyers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoices", "available-buyers"]
+            }
+          }
+        },
+        {
+          "name": "Get Available Sellers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices/available-sellers",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoices", "available-sellers"]
+            }
+          }
+        },
+        {
+          "name": "Create Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"buyerId\": \"{{clientId}}\",\n  \"sellerId\": \"seller_id_here\",\n  \"invoiceNumber\": \"INV-001\",\n  \"issuedDate\": \"2024-01-01\",\n  \"items\": [\n    {\n      \"product\": \"Tax Consultation\",\n      \"units\": 1,\n      \"unitPrice\": 5000,\n      \"totalValue\": 5000,\n      \"salesTax\": 750,\n      \"extraTax\": 0,\n      \"finalValue\": 5750,\n      \"hsCode\": \"9983.99.00\"\n    }\n  ],\n  \"status\": \"pending\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoices"]
+            }
+          }
+        },
+        {
+          "name": "Get Invoice by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices/{{invoiceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoices", "{{invoiceId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Invoice",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"completed\",\n  \"irn\": \"IRN123456789\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices/{{invoiceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoices", "{{invoiceId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Invoice",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/invoices/{{invoiceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "invoices", "{{invoiceId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "FBR Integration",
+      "item": [
+        {
+          "name": "Get FBR Invoices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fbrinvoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fbrinvoices"]
+            }
+          }
+        },
+        {
+          "name": "Get Available Invoices for FBR",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fbrinvoices/available-invoices",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fbrinvoices", "available-invoices"]
+            }
+          }
+        },
+        {
+          "name": "Get Invoice by Number",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fbrinvoices/invoice/INV-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fbrinvoices", "invoice", "INV-001"]
+            }
+          }
+        },
+        {
+          "name": "Create FBR Invoice from Regular Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invoiceNumber\": \"INV-001\",\n  \"fbrReference\": \"FBR-2024-001\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/fbrinvoices/create-from-invoice",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fbrinvoices", "create-from-invoice"]
+            }
+          }
+        },
+        {
+          "name": "Generate PDF for Invoice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fbrinvoices/generate-pdf/INV-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fbrinvoices", "generate-pdf", "INV-001"]
+            }
+          }
+        },
+        {
+          "name": "Get Invoice Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/fbrinvoices/data/INV-001",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "fbrinvoices", "data", "INV-001"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+} 
