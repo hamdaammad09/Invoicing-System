@@ -330,6 +330,114 @@ app.post('/setup-sample-data', async (req, res) => {
   }
 });
 
+// ===== Test FBR Workflow =====
+app.get('/test-fbr-workflow', async (req, res) => {
+  try {
+    const Invoice = require('./models/invoice');
+    const FbrInvoice = require('./models/fbrInvoice');
+    const SellerSettings = require('./models/sellerSettings');
+    const Client = require('./models/client');
+    
+    console.log('🔍 Testing complete FBR workflow...');
+    
+    // 1. Check data structure
+    const sellers = await SellerSettings.find();
+    const clients = await Client.find();
+    const invoices = await Invoice.find()
+      .populate('buyerId', 'companyName buyerNTN buyerSTRN')
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN')
+      .limit(3);
+    
+    const fbrSubmissions = await FbrInvoice.find()
+      .populate({
+        path: 'invoice',
+        populate: [
+          { path: 'buyerId', select: 'companyName buyerNTN buyerSTRN' },
+          { path: 'sellerId', select: 'companyName sellerNTN sellerSTRN' }
+        ]
+      });
+    
+    // 2. Test data transformation
+    const testSubmissions = fbrSubmissions.map(submission => {
+      const invoice = submission.invoice;
+      const buyerName = invoice?.buyerId?.companyName || 'Unknown Buyer';
+      const sellerName = invoice?.sellerId?.companyName || 'Unknown Seller';
+      
+      return {
+        fbrInvoiceId: submission._id,
+        invoiceNumber: submission.invoiceNumber,
+        originalInvoiceId: invoice?._id || 'Not linked',
+        buyerName: buyerName,
+        sellerName: sellerName,
+        clientName: sellerName, // For tax consultancy
+        customerName: buyerName, // For tax consultancy
+        amount: submission.amount,
+        status: submission.status,
+        fbrStatus: submission.fbrStatus
+      };
+    });
+    
+    // 3. Check for issues
+    const issues = [];
+    
+    if (sellers.length === 0) {
+      issues.push('No seller settings found - run /setup-sample-data');
+    }
+    
+    if (clients.length === 0) {
+      issues.push('No clients found - run /setup-sample-data');
+    }
+    
+    if (invoices.length === 0) {
+      issues.push('No invoices found');
+    }
+    
+    const unlinkedSubmissions = fbrSubmissions.filter(s => !s.invoice);
+    if (unlinkedSubmissions.length > 0) {
+      issues.push(`${unlinkedSubmissions.length} FBR submissions not linked to invoices - run POST /api/fbrinvoices/submissions/fix`);
+    }
+    
+    const unknownBuyers = testSubmissions.filter(s => s.buyerName === 'Unknown Buyer');
+    const unknownSellers = testSubmissions.filter(s => s.sellerName === 'Unknown Seller');
+    
+    if (unknownBuyers.length > 0) {
+      issues.push(`${unknownBuyers.length} submissions with unknown buyers`);
+    }
+    
+    if (unknownSellers.length > 0) {
+      issues.push(`${unknownSellers.length} submissions with unknown sellers`);
+    }
+    
+    res.json({
+      message: 'FBR Workflow Test Results',
+      summary: {
+        sellersCount: sellers.length,
+        clientsCount: clients.length,
+        invoicesCount: invoices.length,
+        fbrSubmissionsCount: fbrSubmissions.length,
+        linkedSubmissionsCount: fbrSubmissions.filter(s => s.invoice).length,
+        unlinkedSubmissionsCount: unlinkedSubmissions.length
+      },
+      testSubmissions: testSubmissions,
+      issues: issues,
+      recommendations: [
+        'If issues found, run: POST /setup-sample-data',
+        'If unlinked submissions: POST /api/fbrinvoices/submissions/fix',
+        'Test submissions: GET /api/fbrinvoices/submissions',
+        'Test stats: GET /api/fbrinvoices/submissions/stats'
+      ],
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ FBR workflow test error:', error);
+    res.status(500).json({
+      error: error.message,
+      message: 'Failed to test FBR workflow'
+    });
+  }
+});
+
 // ===== Error Handler =====
 app.use((err, req, res, next) => {
   console.error('Error:', err);

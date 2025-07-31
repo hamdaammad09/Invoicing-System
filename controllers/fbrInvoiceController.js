@@ -326,17 +326,58 @@ exports.createFbrInvoiceFromInvoice = async (req, res) => {
 // Get FBR invoice submissions
 exports.getFbrSubmissions = async (req, res) => {
   try {
+    console.log('🔍 Fetching FBR submissions...');
+    
     const submissions = await FbrInvoice.find()
-      .populate('invoice')
+      .populate({
+        path: 'invoice',
+        populate: [
+          { path: 'buyerId', select: 'companyName buyerNTN buyerSTRN' },
+          { path: 'sellerId', select: 'companyName sellerNTN sellerSTRN' }
+        ]
+      })
       .populate('client')
       .sort({ createdAt: -1 });
 
     console.log('📋 FBR submissions retrieved:', submissions.length);
 
+    // Transform the data to include proper buyer/seller names
+    const transformedSubmissions = submissions.map(submission => {
+      const invoice = submission.invoice;
+      
+      // Get buyer and seller names from the linked invoice
+      const buyerName = invoice?.buyerId?.companyName || 'Unknown Buyer';
+      const sellerName = invoice?.sellerId?.companyName || 'Unknown Seller';
+      
+      // For tax consultancy: seller = client, buyer = customer
+      const clientName = sellerName;
+      const customerName = buyerName;
+
+      return {
+        ...submission.toObject(),
+        // Add computed fields for display
+        buyerName: buyerName,
+        sellerName: sellerName,
+        clientName: clientName,
+        customerName: customerName,
+        // Add buyer/seller details
+        buyerNTN: invoice?.buyerId?.buyerNTN || '',
+        buyerSTRN: invoice?.buyerId?.buyerSTRN || '',
+        sellerNTN: invoice?.sellerId?.sellerNTN || '',
+        sellerSTRN: invoice?.sellerId?.sellerSTRN || '',
+        // Add invoice details
+        invoiceNumber: invoice?.invoiceNumber || submission.invoiceNumber,
+        totalAmount: invoice?.finalValue || submission.amount,
+        issuedDate: invoice?.issuedDate || submission.createdAt
+      };
+    });
+
+    console.log('✅ FBR submissions transformed with buyer/seller data');
+
     res.json({
       success: true,
-      submissions: submissions,
-      count: submissions.length,
+      submissions: transformedSubmissions,
+      count: transformedSubmissions.length,
       message: 'FBR submissions retrieved successfully'
     });
 
@@ -345,6 +386,132 @@ exports.getFbrSubmissions = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to get FBR submissions',
+      error: error.message
+    });
+  }
+};
+
+// Fix existing FBR submissions with missing invoice links
+exports.fixFbrSubmissions = async (req, res) => {
+  try {
+    console.log('🔧 Fixing FBR submissions with missing invoice links...');
+    
+    // Find FBR submissions that don't have invoice links
+    const submissionsWithoutInvoice = await FbrInvoice.find({
+      $or: [
+        { invoice: { $exists: false } },
+        { invoice: null }
+      ]
+    });
+
+    console.log(`📋 Found ${submissionsWithoutInvoice.length} submissions without invoice links`);
+
+    let fixedCount = 0;
+    const results = [];
+
+    for (const submission of submissionsWithoutInvoice) {
+      try {
+        // Try to find the original invoice by invoice number
+        const invoice = await Invoice.findOne({ 
+          invoiceNumber: submission.invoiceNumber 
+        });
+
+        if (invoice) {
+          // Update the FBR submission with the invoice link
+          submission.invoice = invoice._id;
+          submission.client = invoice.buyerId; // Link to buyer as client
+          await submission.save();
+          
+          fixedCount++;
+          results.push({
+            fbrInvoiceId: submission._id,
+            invoiceNumber: submission.invoiceNumber,
+            status: 'fixed',
+            linkedInvoiceId: invoice._id
+          });
+          
+          console.log(`✅ Fixed submission ${submission.invoiceNumber}`);
+        } else {
+          results.push({
+            fbrInvoiceId: submission._id,
+            invoiceNumber: submission.invoiceNumber,
+            status: 'invoice_not_found',
+            error: 'Original invoice not found'
+          });
+          
+          console.log(`❌ Invoice not found for ${submission.invoiceNumber}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error fixing submission ${submission.invoiceNumber}:`, error);
+        results.push({
+          fbrInvoiceId: submission._id,
+          invoiceNumber: submission.invoiceNumber,
+          status: 'error',
+          error: error.message
+        });
+      }
+    }
+
+    console.log(`✅ Fixed ${fixedCount} out of ${submissionsWithoutInvoice.length} submissions`);
+
+    res.json({
+      success: true,
+      message: `Fixed ${fixedCount} FBR submissions`,
+      totalFound: submissionsWithoutInvoice.length,
+      fixedCount: fixedCount,
+      results: results
+    });
+
+  } catch (error) {
+    console.error('❌ Error fixing FBR submissions:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fix FBR submissions',
+      error: error.message
+    });
+  }
+};
+
+// Get FBR submission statistics
+exports.getFbrSubmissionStats = async (req, res) => {
+  try {
+    console.log('📊 Fetching FBR submission statistics...');
+    
+    const stats = await FbrInvoice.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Convert to object format
+    const statsObject = {
+      accepted: 0,
+      pending: 0,
+      rejected: 0,
+      total: 0
+    };
+
+    stats.forEach(stat => {
+      statsObject[stat._id] = stat.count;
+      statsObject.total += stat.count;
+    });
+
+    console.log('✅ FBR submission stats:', statsObject);
+
+    res.json({
+      success: true,
+      stats: statsObject,
+      message: 'FBR submission statistics retrieved successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error getting FBR submission stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get FBR submission statistics',
       error: error.message
     });
   }
