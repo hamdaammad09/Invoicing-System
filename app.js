@@ -48,7 +48,11 @@ app.use(cors({
     'http://localhost:3000',
     'http://localhost:3001',
     'https://hsoftworks-phi.vercel.app',
-    'https://*.vercel.app' 
+    'https://hsoftworks.vercel.app',
+    'https://*.vercel.app',
+    'https://*.vercel.app/*',
+    'https://vercel.app',
+    'https://vercel.app/*'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
