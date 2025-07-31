@@ -6,22 +6,26 @@ const {
   createService,
   getServiceById,
   updateService,
-  deleteService
+  deleteService,
+  getServicesByCategory,
+  getServicesByType,
+  getServicesByStatus,
+  getServiceStats,
+  searchServices
 } = require('../controllers/serviceController');
 
-// GET all services
+// Basic CRUD operations
 router.get('/', getServices);
-
-// POST new service
 router.post('/', createService);
-
-// GET single service by ID
+router.get('/stats', getServiceStats);
+router.get('/search', searchServices);
 router.get('/:id', getServiceById);
-
-// PUT update service
 router.put('/:id', updateService);
-
-// DELETE service
 router.delete('/:id', deleteService);
+
+// Filter routes
+router.get('/category/:category', getServicesByCategory);
+router.get('/type/:type', getServicesByType);
+router.get('/status/:status', getServicesByStatus);
 
 module.exports = router;
