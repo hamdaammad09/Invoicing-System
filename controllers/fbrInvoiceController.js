@@ -15,17 +15,38 @@ exports.getAvailableInvoiceNumbers = async (req, res) => {
     .select('invoiceNumber issuedDate finalValue buyerId sellerId')
     .sort({ issuedDate: -1 });
 
-    const invoiceOptions = invoices.map(invoice => ({
-      invoiceNumber: invoice.invoiceNumber,
-      issuedDate: invoice.issuedDate,
-      totalAmount: invoice.finalValue,
-      buyerName: invoice.buyerId?.companyName || 'Unknown Buyer',
-      sellerName: invoice.sellerId?.companyName || 'Unknown Seller',
-      buyerNTN: invoice.buyerId?.buyerNTN || '',
-      buyerSTRN: invoice.buyerId?.buyerSTRN || '',
-      sellerNTN: invoice.sellerId?.sellerNTN || '',
-      sellerSTRN: invoice.sellerId?.sellerSTRN || ''
-    }));
+    const invoiceOptions = invoices.map(invoice => {
+      // For tax consultancy, sellers are the clients
+      const clientName = invoice.sellerId?.companyName || 'Unknown Client';
+      const clientNTN = invoice.sellerId?.sellerNTN || '';
+      const clientSTRN = invoice.sellerId?.sellerSTRN || '';
+      
+      // Buyer is the customer of the seller
+      const customerName = invoice.buyerId?.companyName || 'Unknown Customer';
+      const customerNTN = invoice.buyerId?.buyerNTN || '';
+      const customerSTRN = invoice.buyerId?.buyerSTRN || '';
+
+      return {
+        invoiceNumber: invoice.invoiceNumber,
+        issuedDate: invoice.issuedDate,
+        totalAmount: invoice.finalValue,
+        // Display seller as client (since sellers are your tax consultancy clients)
+        clientName: clientName,
+        clientNTN: clientNTN,
+        clientSTRN: clientSTRN,
+        // Display buyer as customer
+        customerName: customerName,
+        customerNTN: customerNTN,
+        customerSTRN: customerSTRN,
+        // Keep original fields for backward compatibility
+        buyerName: customerName,
+        sellerName: clientName,
+        buyerNTN: customerNTN,
+        buyerSTRN: customerSTRN,
+        sellerNTN: clientNTN,
+        sellerSTRN: clientSTRN
+      };
+    });
 
     console.log('📋 Available invoice numbers for FBR:', invoiceOptions.length);
 
@@ -91,14 +112,27 @@ exports.getInvoiceByNumber = async (req, res) => {
       extraTax: totalExtraTax,
       finalValue: invoice.finalValue,
       
-      // Buyer details
+      // Client details (seller is the tax consultancy client)
+      clientName: invoice.sellerId?.companyName || '',
+      clientNTN: invoice.sellerId?.sellerNTN || '',
+      clientSTRN: invoice.sellerId?.sellerSTRN || '',
+      clientAddress: invoice.sellerId?.address || '',
+      clientPhone: invoice.sellerId?.phone || '',
+      
+      // Customer details (buyer is the customer of the seller)
+      customerName: invoice.buyerId?.companyName || '',
+      customerNTN: invoice.buyerId?.buyerNTN || '',
+      customerSTRN: invoice.buyerId?.buyerSTRN || '',
+      customerAddress: invoice.buyerId?.address || '',
+      customerPhone: invoice.buyerId?.phone || '',
+      
+      // Keep original fields for backward compatibility
       buyerName: invoice.buyerId?.companyName || '',
       buyerNTN: invoice.buyerId?.buyerNTN || '',
       buyerSTRN: invoice.buyerId?.buyerSTRN || '',
       buyerAddress: invoice.buyerId?.address || '',
       buyerPhone: invoice.buyerId?.phone || '',
       
-      // Seller details
       sellerName: invoice.sellerId?.companyName || '',
       sellerNTN: invoice.sellerId?.sellerNTN || '',
       sellerSTRN: invoice.sellerId?.sellerSTRN || '',

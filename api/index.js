@@ -38,4 +38,41 @@ app.get('/test-hscodes', (req, res) => {
   });
 });
 
+// Test FBR invoice data structure
+app.get('/test-fbr-data', async (req, res) => {
+  try {
+    const Invoice = require('../models/invoice');
+    const invoices = await Invoice.find()
+      .populate('buyerId', 'companyName buyerNTN buyerSTRN')
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN')
+      .limit(3);
+    
+    const testData = invoices.map(invoice => ({
+      invoiceNumber: invoice.invoiceNumber,
+      // Client (seller) information
+      clientName: invoice.sellerId?.companyName || 'Unknown Client',
+      clientNTN: invoice.sellerId?.sellerNTN || '',
+      clientSTRN: invoice.sellerId?.sellerSTRN || '',
+      // Customer (buyer) information
+      customerName: invoice.buyerId?.companyName || 'Unknown Customer',
+      customerNTN: invoice.buyerId?.buyerNTN || '',
+      customerSTRN: invoice.buyerId?.buyerSTRN || '',
+      // Original fields
+      buyerName: invoice.buyerId?.companyName || 'Unknown Buyer',
+      sellerName: invoice.sellerId?.companyName || 'Unknown Seller'
+    }));
+    
+    res.json({
+      message: 'FBR Data Structure Test',
+      testData,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error.message,
+      message: 'Failed to test FBR data structure'
+    });
+  }
+});
+
 module.exports = app;
