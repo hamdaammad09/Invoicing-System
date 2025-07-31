@@ -6,6 +6,8 @@ const fbrApiService = require('../utils/fbrApiService');
 // Get all available invoice numbers for FBR submission
 exports.getAvailableInvoiceNumbers = async (req, res) => {
   try {
+    console.log('🔍 Fetching available invoices for FBR...');
+    
     // Get invoices that haven't been submitted to FBR yet
     const invoices = await Invoice.find({ 
       fbrReference: { $exists: false } 
@@ -14,6 +16,9 @@ exports.getAvailableInvoiceNumbers = async (req, res) => {
     .populate('sellerId', 'companyName sellerNTN sellerSTRN')
     .select('invoiceNumber issuedDate finalValue buyerId sellerId')
     .sort({ issuedDate: -1 });
+
+    console.log('📋 Found invoices:', invoices.length);
+    console.log('📋 Sample invoice data:', invoices[0]);
 
     const invoiceOptions = invoices.map(invoice => {
       // For tax consultancy, sellers are the clients
@@ -25,6 +30,13 @@ exports.getAvailableInvoiceNumbers = async (req, res) => {
       const customerName = invoice.buyerId?.companyName || 'Unknown Customer';
       const customerNTN = invoice.buyerId?.buyerNTN || '';
       const customerSTRN = invoice.buyerId?.buyerSTRN || '';
+
+      console.log(`📄 Invoice ${invoice.invoiceNumber}:`, {
+        sellerId: invoice.sellerId,
+        buyerId: invoice.buyerId,
+        clientName,
+        customerName
+      });
 
       return {
         invoiceNumber: invoice.invoiceNumber,

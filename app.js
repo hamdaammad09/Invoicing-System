@@ -191,6 +191,145 @@ app.get('/api-test', (req, res) => {
   });
 });
 
+// ===== Test FBR Data Structure =====
+app.get('/test-fbr-data', async (req, res) => {
+  try {
+    const Invoice = require('./models/invoice');
+    const SellerSettings = require('./models/sellerSettings');
+    const Client = require('./models/client');
+    
+    console.log('🔍 Testing FBR data structure...');
+    
+    // Check if we have any seller settings
+    const sellers = await SellerSettings.find();
+    console.log('📋 Found sellers:', sellers.length);
+    console.log('📋 Sample seller:', sellers[0]);
+    
+    // Check if we have any clients
+    const clients = await Client.find();
+    console.log('📋 Found clients:', clients.length);
+    console.log('📋 Sample client:', clients[0]);
+    
+    // Check invoices with relationships
+    const invoices = await Invoice.find()
+      .populate('buyerId', 'companyName buyerNTN buyerSTRN')
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN')
+      .limit(3);
+    
+    console.log('📋 Found invoices:', invoices.length);
+    console.log('📋 Sample invoice:', invoices[0]);
+    
+    const testData = invoices.map(invoice => ({
+      invoiceNumber: invoice.invoiceNumber,
+      // Raw IDs
+      buyerId: invoice.buyerId,
+      sellerId: invoice.sellerId,
+      // Client (seller) information
+      clientName: invoice.sellerId?.companyName || 'Unknown Client',
+      clientNTN: invoice.sellerId?.sellerNTN || '',
+      clientSTRN: invoice.sellerId?.sellerSTRN || '',
+      // Customer (buyer) information
+      customerName: invoice.buyerId?.companyName || 'Unknown Customer',
+      customerNTN: invoice.buyerId?.buyerNTN || '',
+      customerSTRN: invoice.buyerId?.buyerSTRN || '',
+      // Original fields
+      buyerName: invoice.buyerId?.companyName || 'Unknown Buyer',
+      sellerName: invoice.sellerId?.companyName || 'Unknown Seller'
+    }));
+    
+    res.json({
+      message: 'FBR Data Structure Test',
+      summary: {
+        sellersCount: sellers.length,
+        clientsCount: clients.length,
+        invoicesCount: invoices.length
+      },
+      sellers: sellers.map(s => ({ id: s._id, companyName: s.companyName })),
+      clients: clients.map(c => ({ id: c._id, companyName: c.companyName })),
+      testData,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Test FBR data error:', error);
+    res.status(500).json({
+      error: error.message,
+      message: 'Failed to test FBR data structure'
+    });
+  }
+});
+
+// ===== Setup Sample Data =====
+app.post('/setup-sample-data', async (req, res) => {
+  try {
+    const SellerSettings = require('./models/sellerSettings');
+    const Client = require('./models/client');
+    const Invoice = require('./models/invoice');
+    
+    console.log('🔧 Setting up sample data...');
+    
+    // Create a sample seller (your tax consultancy client)
+    const sampleSeller = new SellerSettings({
+      companyName: 'ABC Trading Company',
+      sellerNTN: '1234567-8',
+      sellerSTRN: '1234567890123',
+      address: '123 Business Street, Karachi',
+      phone: '+92-300-1234567',
+      email: 'info@abctrading.com',
+      status: 'active'
+    });
+    
+    await sampleSeller.save();
+    console.log('✅ Created sample seller:', sampleSeller.companyName);
+    
+    // Create a sample client (customer of the seller)
+    const sampleClient = new Client({
+      companyName: 'XYZ Manufacturing Ltd',
+      buyerNTN: '8765432-1',
+      buyerSTRN: '9876543210987',
+      address: '456 Industrial Area, Lahore',
+      phone: '+92-300-9876543',
+      email: 'contact@xyzmanufacturing.com'
+    });
+    
+    await sampleClient.save();
+    console.log('✅ Created sample client:', sampleClient.companyName);
+    
+    // Update existing invoices to use these IDs
+    const invoices = await Invoice.find();
+    if (invoices.length > 0) {
+      for (let invoice of invoices) {
+        invoice.buyerId = sampleClient._id;
+        invoice.sellerId = sampleSeller._id;
+        await invoice.save();
+      }
+      console.log(`✅ Updated ${invoices.length} invoices with proper relationships`);
+    }
+    
+    res.json({
+      message: 'Sample data setup completed',
+      seller: {
+        id: sampleSeller._id,
+        companyName: sampleSeller.companyName,
+        sellerNTN: sampleSeller.sellerNTN
+      },
+      client: {
+        id: sampleClient._id,
+        companyName: sampleClient.companyName,
+        buyerNTN: sampleClient.buyerNTN
+      },
+      invoicesUpdated: invoices.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Setup sample data error:', error);
+    res.status(500).json({
+      error: error.message,
+      message: 'Failed to setup sample data'
+    });
+  }
+});
+
 // ===== Error Handler =====
 app.use((err, req, res, next) => {
   console.error('Error:', err);
