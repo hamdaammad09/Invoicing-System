@@ -1,41 +1,57 @@
 const mongoose = require('mongoose');
 
 const fbrInvoiceSchema = new mongoose.Schema({
-  invoiceNumber: { type: String, required: true }, // e.g., "INV-001"
-  client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
-  amount: { type: Number, required: true },
-  submissionDate: { type: Date }, // optional: only set when submitted
-  fbrReference: { type: String }, // e.g., "FBR-2025-001234"
+  // Invoice Reference
+  invoiceNumber: { type: String, required: true }, // Original invoice number
+  fbrInvoiceId: { type: String }, // FBR system invoice ID
+  
+  // FBR Response Data
+  uuid: { type: String }, // FBR UUID
+  irn: { type: String }, // Invoice Reference Number
+  qrCode: { type: String }, // QR code data
+  fbrReference: { type: String }, // FBR reference number
+  
+  // Buyer Information (Required - FBR needs this)
+  buyerName: { type: String, required: true },
+  buyerNTN: { type: String },
+  buyerSTRN: { type: String },
+  buyerAddress: { type: String, required: true },
+  buyerPhone: { type: String },
+  buyerEmail: { type: String },
+  
+  // Invoice Details
+  totalAmount: { type: Number, required: true },
+  salesTax: { type: Number, default: 0 },
+  extraTax: { type: Number, default: 0 },
+  discount: { type: Number, default: 0 },
+  finalAmount: { type: Number, required: true },
+  
+  // Items array for FBR submission
+  items: [{
+    description: { type: String, required: true },
+    hsCode: { type: String },
+    quantity: { type: Number, required: true },
+    unitPrice: { type: Number, required: true },
+    totalValue: { type: Number, required: true },
+    salesTax: { type: Number, default: 0 },
+    discount: { type: Number, default: 0 }
+  }],
+  
+  // FBR Submission Status
   status: {
     type: String,
-    enum: ['accepted', 'pending', 'rejected'],
-    default: 'pending'
+    enum: ['draft', 'submitted', 'accepted', 'rejected', 'pending'],
+    default: 'draft'
   },
-  errorMessage: { type: String }, // for rejected invoices
-  invoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' }, // linked invoice (optional)
-  submittedToFBR: { type: Boolean, default: false }, // for filtering pending ones
   
-  // NEW FIELDS FOR HS CODE AND FBR INTEGRATION
-  hsCode: { 
-    type: String,
-    validate: {
-      validator: function(v) {
-        return /^\d{4}\.\d{2}\.\d{2}$/.test(v);
-      },
-      message: 'Invalid HS Code format. Use format: XXXX.XX.XX'
-    }
-  },
-  fbrInvoiceId: { type: String }, // FBR system ka invoice ID
+  // FBR API Response
   fbrSubmissionResponse: { type: Object }, // Complete FBR response
   fbrSubmissionDate: { type: Date }, // When submitted to FBR
-  fbrStatus: { 
-    type: String, 
-    enum: ['submitted', 'accepted', 'rejected', 'pending'],
-    default: 'pending'
-  },
   fbrErrorMessage: { type: String }, // FBR error details
-  retryCount: { type: Number, default: 0 }, // Retry attempts
-  lastRetryDate: { type: Date }, // Last retry timestamp
+  
+  // Retry Management
+  retryCount: { type: Number, default: 0 },
+  lastRetryDate: { type: Date },
   
   // FBR API Settings used for this submission
   fbrEnvironment: { 
@@ -44,27 +60,21 @@ const fbrInvoiceSchema = new mongoose.Schema({
     default: 'sandbox'
   },
   fbrClientId: { type: String }, // FBR Client ID used
-  fbrApiUrl: { type: String }, // FBR API URL used
   
-  // Invoice Details for FBR
-  buyerNTN: { type: String },
-  buyerSTRN: { type: String },
-  sellerNTN: { type: String },
-  sellerSTRN: { type: String },
-  totalAmount: { type: Number },
-  salesTax: { type: Number },
-  extraTax: { type: Number },
+  // Linked Data (for internal reference)
+  originalInvoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
+  buyer: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
   
-  // Items array for FBR submission
-  items: [{
-    description: { type: String },
-    hsCode: { type: String },
-    quantity: { type: Number },
-    unitPrice: { type: Number },
-    totalValue: { type: Number },
-    salesTax: { type: Number }
-  }]
+  // Metadata
+  notes: { type: String },
+  tags: [{ type: String }]
   
 }, { timestamps: true });
+
+// Indexes for performance
+fbrInvoiceSchema.index({ invoiceNumber: 1 });
+fbrInvoiceSchema.index({ fbrReference: 1 });
+fbrInvoiceSchema.index({ status: 1 });
+fbrInvoiceSchema.index({ fbrEnvironment: 1 });
 
 module.exports = mongoose.model('FbrInvoice', fbrInvoiceSchema);

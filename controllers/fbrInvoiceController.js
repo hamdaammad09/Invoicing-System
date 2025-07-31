@@ -194,6 +194,8 @@ exports.createFbrInvoiceFromInvoice = async (req, res) => {
       });
     }
 
+    console.log('📄 Creating FBR invoice from invoice:', invoiceNumber);
+
     // Get the original invoice
     const invoice = await Invoice.findOne({ invoiceNumber })
       .populate('buyerId')
@@ -215,30 +217,51 @@ exports.createFbrInvoiceFromInvoice = async (req, res) => {
       });
     }
 
-    // Validate seller settings
-    if (!invoice.sellerId) {
+    // Validate buyer information (required by FBR)
+    if (!invoice.buyerId) {
       return res.status(400).json({
         success: false,
-        message: 'Seller details not found for this invoice'
+        message: 'Buyer information not found for this invoice'
       });
     }
 
-    // Prepare FBR invoice data
+    console.log('✅ Invoice found and validated');
+
+    // Prepare FBR invoice data (only buyer info and invoice details)
     const fbrInvoiceData = {
       invoiceNumber: invoice.invoiceNumber,
-      client: invoice.buyerId?._id,
-      amount: invoice.finalValue || 0,
-      items: invoice.items || [],
-      buyerNTN: invoice.buyerId?.buyerNTN || '',
-      buyerSTRN: invoice.buyerId?.buyerSTRN || '',
-      sellerNTN: invoice.sellerId.sellerNTN || '',
-      sellerSTRN: invoice.sellerId.sellerSTRN || '',
+      
+      // Buyer information (required by FBR)
+      buyerName: invoice.buyerId.companyName,
+      buyerNTN: invoice.buyerId.buyerNTN || '',
+      buyerSTRN: invoice.buyerId.buyerSTRN || '',
+      buyerAddress: invoice.buyerId.address || '',
+      buyerPhone: invoice.buyerId.phone || '',
+      buyerEmail: invoice.buyerId.email || '',
+      
+      // Invoice details
       totalAmount: invoice.finalValue || 0,
       salesTax: invoice.salesTax || 0,
       extraTax: invoice.extraTax || 0,
+      discount: invoice.discount || 0,
+      finalAmount: invoice.finalValue || 0,
+      
+      // Items array
+      items: invoice.items || [],
+      
+      // FBR environment
       fbrEnvironment: sandbox ? 'sandbox' : 'production',
-      invoice: invoice._id
+      
+      // Linked data
+      originalInvoice: invoice._id,
+      buyer: invoice.buyerId._id,
+      
+      // Invoice dates
+      invoiceDate: invoice.issuedDate,
+      dueDate: invoice.dueDate
     };
+
+    console.log('📝 FBR invoice data prepared');
 
     // Create FBR invoice record
     const fbrInvoice = new FbrInvoice(fbrInvoiceData);
@@ -251,36 +274,40 @@ exports.createFbrInvoiceFromInvoice = async (req, res) => {
     if (!initialized) {
       return res.status(500).json({
         success: false,
-        message: 'FBR API not configured'
+        message: 'FBR API not configured or seller not authenticated'
       });
     }
 
     // Validate invoice before submission
-    const validation = await fbrApiService.validateInvoice(fbrInvoice);
+    const validation = await fbrApiService.validateInvoice(fbrInvoiceData);
     if (!validation.isValid) {
       // Update FBR invoice with validation errors
       fbrInvoice.fbrErrorMessage = validation.errors.join(', ');
-      fbrInvoice.fbrStatus = 'validation_failed';
+      fbrInvoice.status = 'rejected';
       await fbrInvoice.save();
 
       return res.status(400).json({
         success: false,
         message: 'FBR validation failed',
-        errors: validation.errors
+        errors: validation.errors,
+        warnings: validation.warnings
       });
     }
 
+    console.log('✅ Invoice validation passed');
+
     // Submit to FBR
-    const submission = await fbrApiService.submitInvoice(fbrInvoice);
+    const submission = await fbrApiService.submitInvoice(fbrInvoiceData);
 
     if (submission.success) {
       // Update FBR invoice with success response
+      fbrInvoice.uuid = submission.uuid;
+      fbrInvoice.irn = submission.irn;
+      fbrInvoice.qrCode = submission.qrCode;
       fbrInvoice.fbrReference = submission.fbrReference;
       fbrInvoice.fbrSubmissionResponse = submission.fbrResponse;
-      fbrInvoice.fbrSubmissionDate = submission.submissionDate;
-      fbrInvoice.fbrStatus = 'submitted';
-      fbrInvoice.submittedToFBR = true;
-      fbrInvoice.status = 'pending';
+      fbrInvoice.fbrSubmissionDate = new Date();
+      fbrInvoice.status = 'submitted';
       
       await fbrInvoice.save();
       
@@ -295,12 +322,15 @@ exports.createFbrInvoiceFromInvoice = async (req, res) => {
         success: true,
         message: 'FBR invoice created and submitted successfully',
         fbrReference: submission.fbrReference,
+        uuid: submission.uuid,
+        irn: submission.irn,
+        qrCode: submission.qrCode,
         fbrInvoice: fbrInvoice
       });
     } else {
       // Update FBR invoice with error
       fbrInvoice.fbrErrorMessage = submission.error;
-      fbrInvoice.fbrStatus = 'rejected';
+      fbrInvoice.status = 'rejected';
       fbrInvoice.retryCount = 1;
       fbrInvoice.lastRetryDate = new Date();
       

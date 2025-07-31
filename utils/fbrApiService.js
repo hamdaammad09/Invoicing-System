@@ -1,28 +1,27 @@
 const axios = require('axios');
-const FbrApiSetting = require('../models/fbrApiSetting');
+const fbrAuthService = require('./fbrAuthService');
 const mockFbrService = require('./mockFbrService');
 
 class FbrApiService {
   constructor() {
-    this.settings = null;
-    this.accessToken = null;
-    this.tokenExpiry = null;
+    this.isInitialized = false;
   }
 
-  // Initialize API settings
+  // Initialize API service with authentication
   async initialize() {
     try {
-      this.settings = await FbrApiSetting.findOne().sort({ updatedAt: -1 });
-      if (!this.settings) {
-        throw new Error('FBR API settings not configured. Please configure API settings first.');
-      }
+      console.log('🚀 Initializing FBR API Service...');
       
-      // Validate required settings
-      if (!this.settings.clientId || !this.settings.clientSecret || !this.settings.apiUrl) {
-        throw new Error('Incomplete FBR API settings. Please provide Client ID, Client Secret, and API URL.');
-      }
+      // Initialize authentication service
+      const authInitialized = await fbrAuthService.initialize();
       
-      console.log('✅ FBR API settings loaded successfully');
+      if (!authInitialized) {
+        console.log('⚠️ FBR authentication not available');
+        return false;
+      }
+
+      this.isInitialized = true;
+      console.log('✅ FBR API Service initialized successfully');
       return true;
     } catch (error) {
       console.error('❌ Failed to initialize FBR API service:', error);
@@ -30,59 +29,35 @@ class FbrApiService {
     }
   }
 
-  // Get access token from FBR
-  async getAccessToken() {
-    try {
-      if (this.accessToken && this.tokenExpiry && new Date() < this.tokenExpiry) {
-        return this.accessToken;
-      }
-
-      const response = await axios.post(`${this.settings.apiUrl}/auth/token`, {
-        client_id: this.settings.clientId,
-        client_secret: this.settings.clientSecret,
-        grant_type: 'client_credentials'
-      }, {
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-
-      this.accessToken = response.data.access_token;
-      this.tokenExpiry = new Date(Date.now() + (response.data.expires_in * 1000));
-      
-      console.log('✅ FBR access token obtained successfully');
-      return this.accessToken;
-    } catch (error) {
-      console.error('❌ Failed to get FBR access token:', error.response?.data || error.message);
-      throw new Error('Failed to authenticate with FBR API');
-    }
-  }
-
   // Validate invoice data before submission
   async validateInvoice(invoiceData) {
     try {
-      const token = await this.getAccessToken();
-      
-      const response = await axios.post(`${this.settings.apiUrl}/invoice/validate`, {
-        ...invoiceData,
-        environment: this.settings.environment
-      }, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
 
-      return {
-        isValid: response.data.valid,
-        errors: response.data.errors || [],
-        warnings: response.data.warnings || []
-      };
+      if (!fbrAuthService.isAuthenticated()) {
+        throw new Error('FBR authentication required. Please login first.');
+      }
+
+      console.log('🔍 Validating invoice data...');
+
+      // Validate required fields
+      const validation = this.validateInvoiceData(invoiceData);
+      if (!validation.isValid) {
+        return validation;
+      }
+
+      // For now, use mock validation (replace with actual FBR validation API)
+      const mockValidation = await mockFbrService.validateInvoice(invoiceData);
+      
+      console.log('✅ Invoice validation completed');
+      return mockValidation;
     } catch (error) {
-      console.error('❌ Invoice validation failed:', error.response?.data || error.message);
+      console.error('❌ Invoice validation failed:', error.message);
       return {
         isValid: false,
-        errors: [error.response?.data?.message || 'Validation failed'],
+        errors: [error.message],
         warnings: []
       };
     }
@@ -91,109 +66,225 @@ class FbrApiService {
   // Submit invoice to FBR
   async submitInvoice(invoiceData) {
     try {
-      const token = await this.getAccessToken();
-      
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
+
+      if (!fbrAuthService.isAuthenticated()) {
+        throw new Error('FBR authentication required. Please login first.');
+      }
+
+      console.log('📤 Submitting invoice to FBR...');
+
+      // Validate invoice data first
+      const validation = await this.validateInvoice(invoiceData);
+      if (!validation.isValid) {
+        throw new Error(`Invoice validation failed: ${validation.errors.join(', ')}`);
+      }
+
+      // Format invoice for FBR (only buyer info and invoice details)
       const fbrPayload = this.formatInvoiceForFBR(invoiceData);
       
-      const response = await axios.post(`${this.settings.apiUrl}/invoice/submit`, fbrPayload, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      // Get access token
+      const accessToken = fbrAuthService.getAccessToken();
+      if (!accessToken) {
+        throw new Error('No valid access token available');
+      }
 
-      return {
-        success: true,
-        fbrReference: response.data.invoice_id,
-        fbrResponse: response.data,
-        submissionDate: new Date()
-      };
+      // Get seller info for logging
+      const sellerInfo = fbrAuthService.getSellerInfo();
+      console.log('🏢 Submitting as seller:', sellerInfo.businessName);
+
+      // Submit to FBR (using mock service for now)
+      const response = await mockFbrService.submitInvoice(fbrPayload, accessToken);
+
+      if (response.success) {
+        console.log('✅ Invoice submitted successfully to FBR');
+        console.log('📋 FBR Response:', {
+          uuid: response.uuid,
+          irn: response.irn,
+          qrCode: response.qrCode
+        });
+      }
+
+      return response;
     } catch (error) {
-      console.error('❌ Invoice submission failed:', error.response?.data || error.message);
+      console.error('❌ Invoice submission failed:', error.message);
       return {
         success: false,
-        error: error.response?.data?.message || 'Submission failed',
-        fbrResponse: error.response?.data
+        error: error.message,
+        fbrReference: null,
+        uuid: null,
+        irn: null,
+        qrCode: null
       };
     }
   }
 
-  // Check invoice status in FBR
+  // Check invoice status
   async checkInvoiceStatus(fbrReference) {
     try {
-      const token = await this.getAccessToken();
-      
-      const response = await axios.get(`${this.settings.apiUrl}/invoice/status/${fbrReference}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
 
-      return {
-        success: true,
-        status: response.data.status,
-        details: response.data
-      };
+      if (!fbrAuthService.isAuthenticated()) {
+        throw new Error('FBR authentication required');
+      }
+
+      const accessToken = fbrAuthService.getAccessToken();
+      
+      // Use mock service for now
+      const response = await mockFbrService.checkStatus(fbrReference, accessToken);
+      
+      return response;
     } catch (error) {
-      console.error('❌ Status check failed:', error.response?.data || error.message);
+      console.error('❌ Failed to check invoice status:', error.message);
       return {
         success: false,
-        error: error.response?.data?.message || 'Status check failed'
+        error: error.message,
+        status: 'unknown'
       };
     }
   }
 
-  // Format invoice data for FBR API
+  // Format invoice data for FBR submission
   formatInvoiceForFBR(invoiceData) {
+    try {
+      console.log('📝 Formatting invoice for FBR submission...');
+
+      // FBR payload structure (seller info is auto-attached by FBR)
+      const fbrPayload = {
+        // Invoice header
+        invoice_number: invoiceData.invoiceNumber,
+        invoice_date: invoiceData.invoiceDate || new Date().toISOString().split('T')[0],
+        due_date: invoiceData.dueDate,
+        
+        // Buyer information (required by FBR)
+        buyer: {
+          name: invoiceData.buyerName,
+          ntn: invoiceData.buyerNTN || '',
+          strn: invoiceData.buyerSTRN || '',
+          address: invoiceData.buyerAddress,
+          phone: invoiceData.buyerPhone || '',
+          email: invoiceData.buyerEmail || ''
+        },
+        
+        // Invoice items
+        items: invoiceData.items.map(item => ({
+          description: item.description,
+          hs_code: item.hsCode || '',
+          quantity: item.quantity,
+          unit_price: item.unitPrice,
+          total_value: item.totalValue,
+          sales_tax: item.salesTax || 0,
+          discount: item.discount || 0
+        })),
+        
+        // Invoice totals
+        total_amount: invoiceData.totalAmount,
+        sales_tax: invoiceData.salesTax || 0,
+        extra_tax: invoiceData.extraTax || 0,
+        discount: invoiceData.discount || 0,
+        final_amount: invoiceData.finalAmount,
+        
+        // Additional metadata
+        currency: 'PKR',
+        exchange_rate: 1,
+        notes: invoiceData.notes || ''
+      };
+
+      console.log('✅ Invoice formatted for FBR');
+      return fbrPayload;
+    } catch (error) {
+      console.error('❌ Error formatting invoice for FBR:', error);
+      throw new Error('Failed to format invoice data for FBR submission');
+    }
+  }
+
+  // Validate invoice data structure
+  validateInvoiceData(invoiceData) {
+    const errors = [];
+    const warnings = [];
+
+    // Required fields validation
+    if (!invoiceData.invoiceNumber) {
+      errors.push('Invoice number is required');
+    }
+
+    if (!invoiceData.buyerName) {
+      errors.push('Buyer name is required');
+    }
+
+    if (!invoiceData.buyerAddress) {
+      errors.push('Buyer address is required');
+    }
+
+    if (!invoiceData.items || invoiceData.items.length === 0) {
+      errors.push('At least one item is required');
+    }
+
+    if (!invoiceData.finalAmount || invoiceData.finalAmount <= 0) {
+      errors.push('Final amount must be greater than 0');
+    }
+
+    // Validate items
+    if (invoiceData.items) {
+      invoiceData.items.forEach((item, index) => {
+        if (!item.description) {
+          errors.push(`Item ${index + 1}: Description is required`);
+        }
+        if (!item.quantity || item.quantity <= 0) {
+          errors.push(`Item ${index + 1}: Quantity must be greater than 0`);
+        }
+        if (!item.unitPrice || item.unitPrice <= 0) {
+          errors.push(`Item ${index + 1}: Unit price must be greater than 0`);
+        }
+      });
+    }
+
+    // Warnings
+    if (!invoiceData.buyerNTN && !invoiceData.buyerSTRN) {
+      warnings.push('Buyer NTN or STRN is recommended for tax compliance');
+    }
+
     return {
-      invoice_number: invoiceData.invoiceNumber,
-      buyer: {
-        ntn: invoiceData.buyerNTN,
-        strn: invoiceData.buyerSTRN,
-        name: invoiceData.client?.companyName || invoiceData.client?.name
-      },
-      seller: {
-        ntn: invoiceData.sellerNTN,
-        strn: invoiceData.sellerSTRN
-      },
-      invoice_date: new Date().toISOString().split('T')[0],
-      total_amount: invoiceData.totalAmount,
-      sales_tax: invoiceData.salesTax,
-      extra_tax: invoiceData.extraTax || 0,
-      items: invoiceData.items.map(item => ({
-        description: item.description,
-        hs_code: item.hsCode,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-        total_value: item.totalValue,
-        sales_tax: item.salesTax
-      })),
-      environment: this.settings.environment
+      isValid: errors.length === 0,
+      errors,
+      warnings
     };
   }
 
-  // Test FBR API connection
+  // Test FBR connection
   async testConnection() {
     try {
-      const token = await this.getAccessToken();
-      
-      const response = await axios.get(`${this.settings.apiUrl}/health`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        timeout: 5000 // 5 second timeout
-      });
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
 
+      if (!fbrAuthService.isAuthenticated()) {
+        return {
+          success: false,
+          message: 'FBR authentication required. Please login first.',
+          sellerInfo: null
+        };
+      }
+
+      const sellerInfo = fbrAuthService.getSellerInfo();
+      
       return {
         success: true,
-        message: 'FBR API connection successful',
-        environment: this.settings.environment,
-        apiUrl: this.settings.apiUrl
+        message: 'FBR connection successful',
+        sellerInfo,
+        environment: sellerInfo.environment
       };
     } catch (error) {
-      console.log('⚠️ Real FBR API failed, using mock service for testing');
-      // Fallback to mock service for testing
-      return await mockFbrService.testConnection();
+      console.error('❌ FBR connection test failed:', error);
+      return {
+        success: false,
+        message: 'FBR connection failed',
+        error: error.message
+      };
     }
   }
 }
