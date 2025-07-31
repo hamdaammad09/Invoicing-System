@@ -113,6 +113,22 @@ const hsCodeDatabase = {
   "crop": "9983.27.00",
   "livestock": "9983.27.00",
   
+  // Poultry Products
+  "poultry": "2309.00.00",
+  "poultry meal": "2309.00.00",
+  "poultry oil": "1511.00.00",
+  "chicken meal": "2309.00.00",
+  "chicken oil": "1511.00.00",
+  "bird meal": "2309.00.00",
+  "bird oil": "1511.00.00",
+  "feed meal": "2309.00.00",
+  "animal feed": "2309.00.00",
+  "poultry feed": "2309.00.00",
+  "chicken feed": "2309.00.00",
+  "bird feed": "2309.00.00",
+  "meal": "2309.00.00",
+  "oil": "1511.00.00",
+  
   // Energy and Utilities
   "energy": "9983.28.00",
   "electricity": "9983.28.00",
