@@ -2,6 +2,7 @@ const Invoice = require('../models/invoice');
 const Client = require('../models/client');
 const SellerSettings = require('../models/sellerSettings');
 const QRCode = require('qrcode');
+const { findHSCode } = require('../utils/hsCodeDatabase');
 
 // Get all invoices
 exports.getInvoices = async (req, res) => {
@@ -134,6 +135,10 @@ exports.createInvoice = async (req, res) => {
     
     // If we have new form fields, use them
     if (product && (unitPrice || totalValue)) {
+      // Automatically assign HS code based on product description
+      const autoHSCode = findHSCode(product);
+      console.log('🔍 Auto-assigned HS code for product:', product, '→', autoHSCode);
+      
       itemsArray = [{
         product: product,
         quantity: parseFloat(units) || 1,
@@ -141,16 +146,38 @@ exports.createInvoice = async (req, res) => {
         totalValue: parseFloat(totalValue) || 0,
         salesTax: parseFloat(salesTax) || 0,
         extraTax: parseFloat(extraTax) || 0,
-        finalValue: parseFloat(finalValue) || 0
+        finalValue: parseFloat(finalValue) || 0,
+        hsCode: autoHSCode // Automatically assigned HS code
       }];
     } else if (items && Array.isArray(items)) {
-      itemsArray = items;
+      // Process items array and assign HS codes automatically
+      itemsArray = items.map(item => {
+        const autoHSCode = findHSCode(item.product || item.description || item.name);
+        console.log('🔍 Auto-assigned HS code for item:', item.product || item.description || item.name, '→', autoHSCode);
+        
+        return {
+          ...item,
+          hsCode: item.hsCode || autoHSCode // Use existing HS code or auto-assign
+        };
+      });
     } else if (items && typeof items === 'string') {
       // Handle case where items is sent as a string
       try {
-        itemsArray = JSON.parse(items);
+        const parsedItems = JSON.parse(items);
+        itemsArray = parsedItems.map(item => {
+          const autoHSCode = findHSCode(item.product || item.description || item.name);
+          console.log('🔍 Auto-assigned HS code for parsed item:', item.product || item.description || item.name, '→', autoHSCode);
+          
+          return {
+            ...item,
+            hsCode: item.hsCode || autoHSCode
+          };
+        });
       } catch (e) {
         // If parsing fails, create a single item
+        const autoHSCode = findHSCode(items);
+        console.log('🔍 Auto-assigned HS code for string item:', items, '→', autoHSCode);
+        
         itemsArray = [{
           product: items,
           quantity: 1,
@@ -158,11 +185,15 @@ exports.createInvoice = async (req, res) => {
           totalValue: totalValue || 0,
           salesTax: salesTax || 0,
           extraTax: extraTax || 0,
-          finalValue: finalValue || totalValue || 0
+          finalValue: finalValue || totalValue || 0,
+          hsCode: autoHSCode
         }];
       }
     } else {
       // Default item if no items provided
+      const autoHSCode = findHSCode('Tax Filing');
+      console.log('🔍 Auto-assigned HS code for default item: Tax Filing →', autoHSCode);
+      
       itemsArray = [{
         product: 'Tax Filing',
         quantity: 1,
@@ -170,7 +201,8 @@ exports.createInvoice = async (req, res) => {
         totalValue: totalValue || 0,
         salesTax: salesTax || 0,
         extraTax: extraTax || 0,
-        finalValue: finalValue || totalValue || 0
+        finalValue: finalValue || totalValue || 0,
+        hsCode: autoHSCode
       }];
     }
 

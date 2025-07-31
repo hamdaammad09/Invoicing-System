@@ -69,6 +69,7 @@ const apiSettingsRoutes = require('./routes/fbrApiSettingsRoutes');
 const exportRoutes = require('./routes/exportRoutes');
 const pdfRoutes = require('./routes/pdfRoutes');
 const sellerSettingsRoutes = require('./routes/sellerSettingsRoutes');
+const hsCodeRoutes = require('./routes/hsCodeRoutes');
 
 app.use('/api/clients', clientRoutes);
 app.use('/api/invoices', invoiceRoutes);
@@ -81,6 +82,7 @@ app.use('/api/fbr-api-settings', apiSettingsRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/pdf', pdfRoutes);
 app.use('/api/seller-settings', sellerSettingsRoutes);
+app.use('/api/hscodes', hsCodeRoutes);
 
 // ===== Health Check / Root Route =====
 app.get('/', async (req, res) => {
@@ -160,20 +162,32 @@ app.get('/env-test', (req, res) => {
 // ===== API Routes Test =====
 app.get('/api-test', (req, res) => {
   res.json({
-    message: 'API routes test',
+    message: 'Tax Consultancy Backend API',
+    version: '2.0.6',
+    deployment: 'fixed-issues',
+    timestamp: new Date().toISOString(),
     availableRoutes: [
       'GET /api/clients',
-      'GET /api/invoices', 
+      'GET /api/invoices',
+      'GET /api/tasks',
+      'GET /api/dashboard',
       'GET /api/services',
-      'GET /api/dashboard/stats',
+      'GET /api/fbrinvoices',
       'GET /api/users',
-      'GET /api/export/excel',
+      'GET /api/fbr-api-settings',
+      'GET /api/export',
+      'GET /api/pdf',
+      'GET /api/seller-settings',
+      'GET /api/hscodes',
       'GET /api/export/csv',
-      'GET /api/export/test',
-      'GET /api/fbr-invoices',
-      'GET /api/tasks'
+      'GET /api/fbrinvoices/available-invoices',
+      'GET /api/fbrinvoices/invoice/:invoiceNumber',
+      'POST /api/fbrinvoices/create-from-invoice',
+      'GET /api/fbrinvoices/generate-pdf/:invoiceNumber',
+      'GET /api/fbrinvoices/data/:invoiceNumber'
     ],
-    timestamp: new Date().toISOString()
+    database: 'Connected',
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
