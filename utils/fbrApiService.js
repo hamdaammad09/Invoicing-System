@@ -40,7 +40,7 @@ class FbrApiService {
         throw new Error('FBR authentication required. Please login first.');
       }
 
-      console.log('🔍 Validating invoice data...');
+      console.log('�� Validating invoice data...');
 
       // Validate required fields
       const validation = this.validateInvoiceData(invoiceData);
@@ -74,7 +74,7 @@ class FbrApiService {
         throw new Error('FBR authentication required. Please login first.');
       }
 
-      console.log('📤 Submitting invoice to FBR...');
+      console.log('�� Submitting invoice to FBR...');
 
       // Validate invoice data first
       const validation = await this.validateInvoice(invoiceData);
@@ -100,7 +100,7 @@ class FbrApiService {
 
       if (response.success) {
         console.log('✅ Invoice submitted successfully to FBR');
-        console.log('📋 FBR Response:', {
+        console.log('�� FBR Response:', {
           uuid: response.uuid,
           irn: response.irn,
           qrCode: response.qrCode
@@ -151,7 +151,7 @@ class FbrApiService {
   // Format invoice data for FBR submission
   formatInvoiceForFBR(invoiceData) {
     try {
-      console.log('📝 Formatting invoice for FBR submission...');
+      console.log('�� Formatting invoice for FBR submission...');
 
       // FBR payload structure (seller info is auto-attached by FBR)
       const fbrPayload = {
@@ -289,4 +289,4 @@ class FbrApiService {
   }
 }
 
-module.exports = new FbrApiService(); 
+module.exports = new FbrApiService();

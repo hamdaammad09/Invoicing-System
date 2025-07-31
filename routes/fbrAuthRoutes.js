@@ -26,4 +26,4 @@ router.get('/test-connection', testFbrConnection);
 // Get seller information
 router.get('/seller-info', getSellerInfo);
 
-module.exports = router; 
+module.exports = router;

@@ -2,14 +2,14 @@ const mongoose = require('mongoose');
 
 const fbrInvoiceSchema = new mongoose.Schema({
   // Invoice Reference
-  invoiceNumber: { type: String, required: true }, // Original invoice number
-  fbrInvoiceId: { type: String }, // FBR system invoice ID
+  invoiceNumber: { type: String, required: true },
+  fbrInvoiceId: { type: String },
   
   // FBR Response Data
-  uuid: { type: String }, // FBR UUID
-  irn: { type: String }, // Invoice Reference Number
-  qrCode: { type: String }, // QR code data
-  fbrReference: { type: String }, // FBR reference number
+  uuid: { type: String },
+  irn: { type: String },
+  qrCode: { type: String },
+  fbrReference: { type: String },
   
   // Buyer Information (Required - FBR needs this)
   buyerName: { type: String, required: true },
@@ -45,9 +45,9 @@ const fbrInvoiceSchema = new mongoose.Schema({
   },
   
   // FBR API Response
-  fbrSubmissionResponse: { type: Object }, // Complete FBR response
-  fbrSubmissionDate: { type: Date }, // When submitted to FBR
-  fbrErrorMessage: { type: String }, // FBR error details
+  fbrSubmissionResponse: { type: Object },
+  fbrSubmissionDate: { type: Date },
+  fbrErrorMessage: { type: String },
   
   // Retry Management
   retryCount: { type: Number, default: 0 },
@@ -59,7 +59,7 @@ const fbrInvoiceSchema = new mongoose.Schema({
     enum: ['sandbox', 'production'],
     default: 'sandbox'
   },
-  fbrClientId: { type: String }, // FBR Client ID used
+  fbrClientId: { type: String },
   
   // Linked Data (for internal reference)
   originalInvoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },

@@ -8,24 +8,24 @@ const fbrApiSettingSchema = new mongoose.Schema({
   environment: { type: String, enum: ['production', 'sandbox'], default: 'sandbox' },
   
   // Seller Authentication
-  sellerNTN: { type: String, required: true }, // Seller's NTN for FBR
-  sellerSTRN: { type: String, required: true }, // Seller's STRN for FBR
-  businessName: { type: String, required: true }, // Business name registered with FBR
+  sellerNTN: { type: String, required: true },
+  sellerSTRN: { type: String, required: true },
+  businessName: { type: String, required: true },
   
   // Access Token Management
-  accessToken: { type: String }, // FBR access token
-  refreshToken: { type: String }, // FBR refresh token
-  tokenExpiry: { type: Date }, // Token expiry date
-  lastTokenRefresh: { type: Date }, // Last time token was refreshed
+  accessToken: { type: String },
+  refreshToken: { type: String },
+  tokenExpiry: { type: Date },
+  lastTokenRefresh: { type: Date },
   
   // Authentication Status
   isAuthenticated: { type: Boolean, default: false },
   lastLoginAttempt: { type: Date },
-  loginError: { type: String }, // Last login error message
+  loginError: { type: String },
   
   // API Configuration
   maxRetries: { type: Number, default: 3 },
-  timeout: { type: Number, default: 30000 }, // 30 seconds
+  timeout: { type: Number, default: 30000 },
   
   // Status
   status: { 

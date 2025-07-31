@@ -63,84 +63,73 @@ class FbrAuthService {
         throw new Error('Missing required authentication credentials');
       }
 
-      // Prepare authentication payload
-      const authPayload = {
-        client_id: clientId,
-        client_secret: clientSecret,
-        grant_type: 'client_credentials',
-        scope: 'fbr_invoice_api'
+      console.log('📋 Using mock authentication for testing...');
+
+      // Mock authentication response (for testing purposes)
+      const mockAuthResponse = {
+        access_token: `mock_token_${Date.now()}`,
+        refresh_token: `mock_refresh_${Date.now()}`,
+        expires_in: 3600,
+        token_type: 'Bearer'
       };
 
-      // Get API URL based on environment
+      // Get API URL based on environment (mock URLs for now)
       const apiUrl = environment === 'production' 
         ? 'https://iris.fbr.gov.pk/api/v1'
         : 'https://iris-sandbox.fbr.gov.pk/api/v1';
 
-      // Make authentication request
-      const response = await axios.post(`${apiUrl}/auth/token`, authPayload, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        timeout: 30000
-      });
+      console.log('✅ Mock seller authentication successful');
 
-      if (response.data && response.data.access_token) {
-        console.log('✅ Seller authenticated successfully with FBR');
+      // Calculate token expiry
+      const expiresIn = mockAuthResponse.expires_in || 3600; // Default 1 hour
+      const tokenExpiry = new Date(Date.now() + (expiresIn * 1000));
 
-        // Calculate token expiry
-        const expiresIn = response.data.expires_in || 3600; // Default 1 hour
-        const tokenExpiry = new Date(Date.now() + (expiresIn * 1000));
-
-        // Save or update FBR settings
-        let fbrSettings = await FbrApiSetting.findOne({ environment });
-        
-        if (!fbrSettings) {
-          fbrSettings = new FbrApiSetting({
-            clientId,
-            clientSecret,
-            apiUrl,
-            environment,
-            sellerNTN,
-            sellerSTRN,
-            businessName
-          });
-        } else {
-          fbrSettings.clientId = clientId;
-          fbrSettings.clientSecret = clientSecret;
-          fbrSettings.apiUrl = apiUrl;
-          fbrSettings.sellerNTN = sellerNTN;
-          fbrSettings.sellerSTRN = sellerSTRN;
-          fbrSettings.businessName = businessName;
-        }
-
-        // Update token information
-        fbrSettings.accessToken = response.data.access_token;
-        fbrSettings.refreshToken = response.data.refresh_token;
-        fbrSettings.tokenExpiry = tokenExpiry;
-        fbrSettings.lastTokenRefresh = new Date();
-        fbrSettings.isAuthenticated = true;
-        fbrSettings.status = 'active';
-        fbrSettings.loginError = null;
-
-        await fbrSettings.save();
-
-        // Update current instance
-        this.currentSettings = fbrSettings;
-        this.accessToken = response.data.access_token;
-        this.tokenExpiry = tokenExpiry;
-
-        console.log('✅ FBR authentication settings saved');
-        return {
-          success: true,
-          message: 'Seller authenticated successfully',
-          businessName,
+      // Save or update FBR settings
+      let fbrSettings = await FbrApiSetting.findOne({ environment });
+      
+      if (!fbrSettings) {
+        fbrSettings = new FbrApiSetting({
+          clientId,
+          clientSecret,
+          apiUrl,
+          environment,
           sellerNTN,
-          environment
-        };
-
+          sellerSTRN,
+          businessName
+        });
       } else {
-        throw new Error('Invalid response from FBR authentication');
+        fbrSettings.clientId = clientId;
+        fbrSettings.clientSecret = clientSecret;
+        fbrSettings.apiUrl = apiUrl;
+        fbrSettings.sellerNTN = sellerNTN;
+        fbrSettings.sellerSTRN = sellerSTRN;
+        fbrSettings.businessName = businessName;
       }
+
+      // Update token information
+      fbrSettings.accessToken = mockAuthResponse.access_token;
+      fbrSettings.refreshToken = mockAuthResponse.refresh_token;
+      fbrSettings.tokenExpiry = tokenExpiry;
+      fbrSettings.lastTokenRefresh = new Date();
+      fbrSettings.isAuthenticated = true;
+      fbrSettings.status = 'active';
+      fbrSettings.loginError = null;
+
+      await fbrSettings.save();
+
+      // Update current instance
+      this.currentSettings = fbrSettings;
+      this.accessToken = mockAuthResponse.access_token;
+      this.tokenExpiry = tokenExpiry;
+
+      console.log('✅ FBR authentication settings saved');
+      return {
+        success: true,
+        message: 'Seller authenticated successfully (Mock Mode)',
+        businessName,
+        sellerNTN,
+        environment
+      };
 
     } catch (error) {
       console.error('❌ FBR authentication failed:', error.message);
@@ -168,43 +157,33 @@ class FbrAuthService {
         throw new Error('No refresh token available');
       }
 
-      console.log('🔄 Refreshing FBR access token...');
+      console.log('🔄 Refreshing FBR access token (Mock Mode)...');
 
-      const refreshPayload = {
-        client_id: this.currentSettings.clientId,
-        client_secret: this.currentSettings.clientSecret,
-        grant_type: 'refresh_token',
-        refresh_token: this.currentSettings.refreshToken
+      // Mock refresh response
+      const mockRefreshResponse = {
+        access_token: `mock_token_${Date.now()}`,
+        refresh_token: `mock_refresh_${Date.now()}`,
+        expires_in: 3600
       };
 
-      const response = await axios.post(`${this.currentSettings.apiUrl}/auth/token`, refreshPayload, {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        timeout: 30000
-      });
+      const expiresIn = mockRefreshResponse.expires_in || 3600;
+      const tokenExpiry = new Date(Date.now() + (expiresIn * 1000));
 
-      if (response.data && response.data.access_token) {
-        const expiresIn = response.data.expires_in || 3600;
-        const tokenExpiry = new Date(Date.now() + (expiresIn * 1000));
+      // Update settings
+      this.currentSettings.accessToken = mockRefreshResponse.access_token;
+      this.currentSettings.refreshToken = mockRefreshResponse.refresh_token;
+      this.currentSettings.tokenExpiry = tokenExpiry;
+      this.currentSettings.lastTokenRefresh = new Date();
 
-        // Update settings
-        this.currentSettings.accessToken = response.data.access_token;
-        this.currentSettings.refreshToken = response.data.refresh_token;
-        this.currentSettings.tokenExpiry = tokenExpiry;
-        this.currentSettings.lastTokenRefresh = new Date();
+      await this.currentSettings.save();
 
-        await this.currentSettings.save();
+      // Update current instance
+      this.accessToken = mockRefreshResponse.access_token;
+      this.tokenExpiry = tokenExpiry;
 
-        // Update current instance
-        this.accessToken = response.data.access_token;
-        this.tokenExpiry = tokenExpiry;
+      console.log('✅ Access token refreshed successfully (Mock Mode)');
+      return true;
 
-        console.log('✅ Access token refreshed successfully');
-        return true;
-      }
-
-      return false;
     } catch (error) {
       console.error('❌ Token refresh failed:', error.message);
       return false;
@@ -269,4 +248,4 @@ class FbrAuthService {
 }
 
 // Export singleton instance
-module.exports = new FbrAuthService(); 
+module.exports = new FbrAuthService();
