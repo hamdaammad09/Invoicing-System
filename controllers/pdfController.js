@@ -286,14 +286,32 @@ const generateFbrInvoicePDF = async (req, res) => {
     const SellerSettings = require('../models/sellerSettings');
     
     // Find FBR invoice by invoice number
-    const fbrInvoice = await FbrInvoice.findOne({ invoiceNumber });
+    let fbrInvoice = await FbrInvoice.findOne({ invoiceNumber });
     
-    if (!fbrInvoice) {
-      return res.status(404).json({ error: 'FBR invoice not found' });
+    // If FBR invoice doesn't exist, try to get regular invoice
+    let invoice = await Invoice.findOne({ invoiceNumber });
+    
+    if (!invoice) {
+      return res.status(404).json({ error: 'Invoice not found' });
     }
 
-    // Get original invoice
-    const invoice = await Invoice.findOne({ invoiceNumber });
+    // If no FBR invoice exists, create a basic one for display
+    if (!fbrInvoice) {
+      fbrInvoice = {
+        invoiceNumber: invoice.invoiceNumber,
+        status: 'draft',
+        fbrEnvironment: 'sandbox',
+        items: invoice.items || [],
+        totalAmount: invoice.finalValue || 0,
+        salesTax: invoice.salesTax || 0,
+        extraTax: invoice.extraTax || 0,
+        finalAmount: invoice.finalValue || 0,
+        buyerName: invoice.buyerId?.companyName || 'N/A',
+        buyerAddress: invoice.buyerId?.address || 'N/A',
+        buyerNTN: invoice.buyerId?.buyerNTN || '',
+        buyerSTRN: invoice.buyerId?.buyerSTRN || ''
+      };
+    }
     
     // Get seller settings
     let sellerSettings = await SellerSettings.findOne();
@@ -305,6 +323,8 @@ const generateFbrInvoicePDF = async (req, res) => {
     let buyerInfo = null;
     if (fbrInvoice.buyer) {
       buyerInfo = await Client.findById(fbrInvoice.buyer);
+    } else if (invoice.buyerId) {
+      buyerInfo = await Client.findById(invoice.buyerId);
     }
 
     // Create PDF document
@@ -346,30 +366,43 @@ const generateFbrInvoicePDF = async (req, res) => {
     const fbrRefRightX = 310;
     let fbrRefY = fbrRefBoxY + 15;
     
-    // Left column
-    if (fbrInvoice.uuid) {
-      doc.fontSize(10).font('Helvetica-Bold').text('UUID:', fbrRefLeftX, fbrRefY);
-      doc.fontSize(9).font('Helvetica').text(fbrInvoice.uuid, fbrRefLeftX + 50, fbrRefY);
-      fbrRefY += 15;
-    }
+    // Check if FBR data exists
+    const hasFbrData = fbrInvoice.uuid || fbrInvoice.irn || fbrInvoice.fbrReference;
     
-    if (fbrInvoice.irn) {
-      doc.fontSize(10).font('Helvetica-Bold').text('IRN:', fbrRefLeftX, fbrRefY);
-      doc.fontSize(9).font('Helvetica').text(fbrInvoice.irn, fbrRefLeftX + 50, fbrRefY);
+    if (hasFbrData) {
+      // Left column
+      if (fbrInvoice.uuid) {
+        doc.fontSize(10).font('Helvetica-Bold').text('UUID:', fbrRefLeftX, fbrRefY);
+        doc.fontSize(9).font('Helvetica').text(fbrInvoice.uuid, fbrRefLeftX + 50, fbrRefY);
+        fbrRefY += 15;
+      }
+      
+      if (fbrInvoice.irn) {
+        doc.fontSize(10).font('Helvetica-Bold').text('IRN:', fbrRefLeftX, fbrRefY);
+        doc.fontSize(9).font('Helvetica').text(fbrInvoice.irn, fbrRefLeftX + 50, fbrRefY);
+        fbrRefY += 15;
+      }
+      
+      // Right column
+      fbrRefY = fbrRefBoxY + 15;
+      if (fbrInvoice.fbrReference) {
+        doc.fontSize(10).font('Helvetica-Bold').text('FBR Ref:', fbrRefRightX, fbrRefY);
+        doc.fontSize(9).font('Helvetica').text(fbrInvoice.fbrReference, fbrRefRightX + 60, fbrRefY);
+        fbrRefY += 15;
+      }
+      
+      if (fbrInvoice.fbrSubmissionDate) {
+        doc.fontSize(10).font('Helvetica-Bold').text('Submission Date:', fbrRefRightX, fbrRefY);
+        doc.fontSize(9).font('Helvetica').text(new Date(fbrInvoice.fbrSubmissionDate).toLocaleDateString(), fbrRefRightX + 100, fbrRefY);
+      }
+    } else {
+      // Show pending FBR submission message
+      doc.fontSize(10).font('Helvetica-Bold').text('Status:', fbrRefLeftX, fbrRefY);
+      doc.fontSize(9).font('Helvetica').text('Pending FBR Submission', fbrRefLeftX + 50, fbrRefY);
       fbrRefY += 15;
-    }
-    
-    // Right column
-    fbrRefY = fbrRefBoxY + 15;
-    if (fbrInvoice.fbrReference) {
-      doc.fontSize(10).font('Helvetica-Bold').text('FBR Ref:', fbrRefRightX, fbrRefY);
-      doc.fontSize(9).font('Helvetica').text(fbrInvoice.fbrReference, fbrRefRightX + 60, fbrRefY);
-      fbrRefY += 15;
-    }
-    
-    if (fbrInvoice.fbrSubmissionDate) {
-      doc.fontSize(10).font('Helvetica-Bold').text('Submission Date:', fbrRefRightX, fbrRefY);
-      doc.fontSize(9).font('Helvetica').text(new Date(fbrInvoice.fbrSubmissionDate).toLocaleDateString(), fbrRefRightX + 100, fbrRefY);
+      
+      doc.fontSize(10).font('Helvetica-Bold').text('Note:', fbrRefLeftX, fbrRefY);
+      doc.fontSize(9).font('Helvetica').text('Submit to FBR to get UUID, IRN, and QR Code', fbrRefLeftX + 50, fbrRefY);
     }
     
     doc.moveDown(3);
@@ -490,9 +523,16 @@ const generateFbrInvoicePDF = async (req, res) => {
     doc.moveDown(3);
     doc.fontSize(10).font('Helvetica-Bold').text('FBR E-INVOICE COMPLIANCE CERTIFICATION', { align: 'center' });
     doc.moveDown(1);
-    doc.fontSize(8).font('Helvetica').text('This invoice has been electronically submitted to FBR and is compliant with Pakistan E-Invoicing regulations.', { align: 'center' });
-    doc.moveDown(1);
-    doc.fontSize(8).font('Helvetica').text(`Status: ${fbrInvoice.status?.toUpperCase() || 'SUBMITTED'} | Environment: ${fbrInvoice.fbrEnvironment?.toUpperCase() || 'SANDBOX'}`, { align: 'center' });
+    
+    if (hasFbrData) {
+      doc.fontSize(8).font('Helvetica').text('This invoice has been electronically submitted to FBR and is compliant with Pakistan E-Invoicing regulations.', { align: 'center' });
+      doc.moveDown(1);
+      doc.fontSize(8).font('Helvetica').text(`Status: ${fbrInvoice.status?.toUpperCase() || 'SUBMITTED'} | Environment: ${fbrInvoice.fbrEnvironment?.toUpperCase() || 'SANDBOX'}`, { align: 'center' });
+    } else {
+      doc.fontSize(8).font('Helvetica').text('This invoice is prepared for FBR E-Invoicing submission. Submit to FBR to get official compliance certification.', { align: 'center' });
+      doc.moveDown(1);
+      doc.fontSize(8).font('Helvetica').text('Status: PENDING SUBMISSION | Environment: SANDBOX', { align: 'center' });
+    }
 
     // ===== SIGNATURE SECTION =====
     doc.moveDown(4);

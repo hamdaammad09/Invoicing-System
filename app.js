@@ -86,6 +86,19 @@ app.use('/api/pdf', pdfRoutes);
 app.use('/api/seller-settings', sellerSettingsRoutes);
 app.use('/api/hscodes', hsCodeRoutes);
 
+// ===== Test PDF Route =====
+app.get('/api/test-pdf', (req, res) => {
+  res.json({
+    message: 'PDF routes are working',
+    availableRoutes: [
+      'GET /api/pdf/invoice/:invoiceId',
+      'GET /api/pdf/fbr-invoice/:invoiceNumber',
+      'POST /api/pdf/invoices'
+    ],
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ===== Health Check / Root Route =====
 app.get('/', async (req, res) => {
   try {
