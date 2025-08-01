@@ -135,10 +135,11 @@ const generateInvoicePDF = async (req, res) => {
     // ===== INVOICE ITEMS TABLE =====
     const tableTop = doc.y + 10;
     
-    // Table headers
+    // Table headers with HS Code
     doc.fontSize(9).font('Helvetica-Bold');
     doc.text('Product', 50, tableTop);
-    doc.text('Units/Quantity', 150, tableTop);
+    doc.text('HS Code', 120, tableTop);
+    doc.text('Qty', 180, tableTop);
     doc.text('Unit Price', 220, tableTop);
     doc.text('Total Value', 290, tableTop);
     doc.text('Sales Tax', 360, tableTop);
@@ -150,13 +151,14 @@ const generateInvoicePDF = async (req, res) => {
     doc.moveTo(50, tableTop - 5).lineTo(550, tableTop - 5).stroke();
     doc.moveTo(50, tableTop + 20).lineTo(550, tableTop + 20).stroke();
 
-    // Add items
+    // Add items with HS Code
     let currentTableY = tableTop + 25;
     doc.fontSize(9).font('Helvetica');
     
     if (invoice.items && Array.isArray(invoice.items)) {
       invoice.items.forEach((item, index) => {
         const product = item.product || 'Service';
+        const hsCode = item.hsCode || '0000.00.00';
         const quantity = item.quantity || 1;
         const unitPrice = item.unitPrice || 0;
         const totalValue = item.totalValue || (quantity * unitPrice);
@@ -165,7 +167,8 @@ const generateInvoicePDF = async (req, res) => {
         const finalValue = item.finalValue || (totalValue + salesTax + extraTax);
 
         doc.text(product, 50, currentTableY);
-        doc.text(quantity.toString(), 150, currentTableY);
+        doc.text(hsCode, 120, currentTableY);
+        doc.text(quantity.toString(), 180, currentTableY);
         doc.text(`₹${unitPrice.toFixed(2)}`, 220, currentTableY);
         doc.text(`₹${totalValue.toFixed(2)}`, 290, currentTableY);
         doc.text(`₹${salesTax.toFixed(2)}`, 360, currentTableY);
@@ -177,13 +180,15 @@ const generateInvoicePDF = async (req, res) => {
     } else {
       // Fallback for string items
       const product = invoice.items || 'Consultancy Service';
+      const hsCode = '0000.00.00';
       const quantity = 1;
       const totalValue = parseFloat(invoice.totalAmount) || 0;
       const salesTax = totalValue * 0.18;
       const finalValue = totalValue + salesTax;
 
       doc.text(product, 50, currentTableY);
-      doc.text(quantity.toString(), 150, currentTableY);
+      doc.text(hsCode, 120, currentTableY);
+      doc.text(quantity.toString(), 180, currentTableY);
       doc.text(`₹${totalValue.toFixed(2)}`, 220, currentTableY);
       doc.text(`₹${totalValue.toFixed(2)}`, 290, currentTableY);
       doc.text(`₹${salesTax.toFixed(2)}`, 360, currentTableY);
@@ -488,10 +493,11 @@ const generateFbrInvoicePDF = async (req, res) => {
     // ===== INVOICE ITEMS TABLE =====
     const tableTop = doc.y + 10;
     
-    // Table headers
+    // Table headers with HS Code
     doc.fontSize(9).font('Helvetica-Bold');
     doc.text('Description', 50, tableTop);
-    doc.text('Quantity', 200, tableTop);
+    doc.text('HS Code', 150, tableTop);
+    doc.text('Qty', 220, tableTop);
     doc.text('Unit Price', 250, tableTop);
     doc.text('Total Value', 320, tableTop);
     doc.text('Sales Tax', 390, tableTop);
@@ -501,14 +507,15 @@ const generateFbrInvoicePDF = async (req, res) => {
     doc.moveTo(50, tableTop - 5).lineTo(550, tableTop - 5).stroke();
     doc.moveTo(50, tableTop + 20).lineTo(550, tableTop + 20).stroke();
 
-    // Add items
+    // Add items with HS Code
     let currentTableY = tableTop + 25;
     doc.fontSize(9).font('Helvetica');
     
     if (fbrInvoice.items && Array.isArray(fbrInvoice.items)) {
       fbrInvoice.items.forEach((item) => {
         doc.text(item.description || 'Item', 50, currentTableY);
-        doc.text((item.quantity || 1).toString(), 200, currentTableY);
+        doc.text(item.hsCode || '0000.00.00', 150, currentTableY);
+        doc.text((item.quantity || 1).toString(), 220, currentTableY);
         doc.text(`₹${(item.unitPrice || 0).toFixed(2)}`, 250, currentTableY);
         doc.text(`₹${(item.totalValue || 0).toFixed(2)}`, 320, currentTableY);
         doc.text(`₹${(item.salesTax || 0).toFixed(2)}`, 390, currentTableY);

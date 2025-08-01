@@ -45,6 +45,17 @@ const invoiceSchema = new mongoose.Schema({
         default: 0,
       }, // Extra Tax
       finalValue: Number, // Value including GST & Extra Tax
+      hsCode: {
+        type: String,
+        required: true,
+        default: '0000.00.00'
+      }, // HS Code for FBR compliance
+      description: {
+        type: String,
+        default: function() {
+          return this.product || 'Item Description';
+        }
+      } // Detailed description for FBR
     }
   ],
   // Removed totalAmount, discount, gst, incomeTax, finalAmount fields
