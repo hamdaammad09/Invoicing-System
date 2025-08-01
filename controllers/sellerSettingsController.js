@@ -16,19 +16,45 @@ const getSellerSettings = async (req, res) => {
   }
 };
 
+// Get current active seller settings
+const getCurrentSellerSettings = async (req, res) => {
+  try {
+    // Get the most recent active seller settings
+    let settings = await SellerSettings.findOne({ status: 'active' }).sort({ updatedAt: -1 });
+    
+    if (!settings) {
+      // Fallback to any seller settings
+      settings = await SellerSettings.findOne().sort({ updatedAt: -1 });
+    }
+    
+    if (!settings) {
+      return res.status(404).json({ error: 'No seller settings found' });
+    }
+    
+    res.json(settings);
+  } catch (error) {
+    console.error('Error getting current seller settings:', error);
+    res.status(500).json({ error: 'Failed to get current seller settings' });
+  }
+};
+
 // Create new seller settings
 const createSellerSettings = async (req, res) => {
   try {
     const { companyName, sellerNTN, sellerSTRN, address, phone, invoiceNumber } = req.body;
     
-    // Create new settings (allow multiple sellers)
+    // Deactivate all existing seller settings
+    await SellerSettings.updateMany({}, { status: 'inactive' });
+    
+    // Create new settings as the current active seller
     const settings = new SellerSettings({
       companyName,
       sellerNTN,
       sellerSTRN,
       address,
       phone,
-      invoiceNumber
+      invoiceNumber,
+      status: 'active' // Mark as active
     });
     
     await settings.save();
@@ -89,6 +115,7 @@ const deleteSellerSettings = async (req, res) => {
 
 module.exports = {
   getSellerSettings,
+  getCurrentSellerSettings,
   createSellerSettings,
   updateSellerSettings,
   deleteSellerSettings

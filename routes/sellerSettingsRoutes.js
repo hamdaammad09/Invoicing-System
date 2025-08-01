@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const { getSellerSettings, updateSellerSettings, createSellerSettings, deleteSellerSettings } = require('../controllers/sellerSettingsController');
+const { getSellerSettings, getCurrentSellerSettings, updateSellerSettings, createSellerSettings, deleteSellerSettings } = require('../controllers/sellerSettingsController');
 
 // Get all seller settings
 router.get('/', getSellerSettings);
+
+// Get current active seller settings
+router.get('/current', getCurrentSellerSettings);
 
 // Create new seller settings
 router.post('/', createSellerSettings);

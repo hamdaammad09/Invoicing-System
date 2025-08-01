@@ -25,9 +25,20 @@ const generateInvoicePDF = async (req, res) => {
     }
 
     // Get seller settings (default if not exists)
-    let sellerSettings = await SellerSettings.findOne();
+    let sellerSettings = await SellerSettings.findOne({ status: 'active' }).sort({ updatedAt: -1 });
     if (!sellerSettings) {
-      sellerSettings = new SellerSettings();
+      // Fallback to any seller settings
+      sellerSettings = await SellerSettings.findOne().sort({ updatedAt: -1 });
+    }
+    if (!sellerSettings) {
+      // Create default seller settings if none exist
+      sellerSettings = {
+        companyName: 'Your Company Name',
+        address: 'Your Company Address',
+        phone: 'Your Phone Number',
+        sellerNTN: 'Your NTN',
+        sellerSTRN: 'Your STRN'
+      };
     }
 
     // Get buyer/client information
@@ -313,10 +324,21 @@ const generateFbrInvoicePDF = async (req, res) => {
       };
     }
     
-    // Get seller settings
-    let sellerSettings = await SellerSettings.findOne();
+    // Get seller settings - Get the most recent active seller settings
+    let sellerSettings = await SellerSettings.findOne({ status: 'active' }).sort({ updatedAt: -1 });
     if (!sellerSettings) {
-      sellerSettings = new SellerSettings();
+      // Fallback to any seller settings
+      sellerSettings = await SellerSettings.findOne().sort({ updatedAt: -1 });
+    }
+    if (!sellerSettings) {
+      // Create default seller settings if none exist
+      sellerSettings = {
+        companyName: 'Your Company Name',
+        address: 'Your Company Address',
+        phone: 'Your Phone Number',
+        sellerNTN: 'Your NTN',
+        sellerSTRN: 'Your STRN'
+      };
     }
 
     // Get buyer information
@@ -384,19 +406,17 @@ const generateFbrInvoicePDF = async (req, res) => {
       }
       
       // Right column
-      fbrRefY = fbrRefBoxY + 15;
       if (fbrInvoice.fbrReference) {
-        doc.fontSize(10).font('Helvetica-Bold').text('FBR Ref:', fbrRefRightX, fbrRefY);
-        doc.fontSize(9).font('Helvetica').text(fbrInvoice.fbrReference, fbrRefRightX + 60, fbrRefY);
-        fbrRefY += 15;
+        doc.fontSize(10).font('Helvetica-Bold').text('FBR Ref:', fbrRefRightX, fbrRefBoxY + 15);
+        doc.fontSize(9).font('Helvetica').text(fbrInvoice.fbrReference, fbrRefRightX + 60, fbrRefBoxY + 15);
       }
       
-      if (fbrInvoice.fbrSubmissionDate) {
-        doc.fontSize(10).font('Helvetica-Bold').text('Submission Date:', fbrRefRightX, fbrRefY);
-        doc.fontSize(9).font('Helvetica').text(new Date(fbrInvoice.fbrSubmissionDate).toLocaleDateString(), fbrRefRightX + 100, fbrRefY);
+      if (fbrInvoice.qrCode) {
+        doc.fontSize(10).font('Helvetica-Bold').text('QR Code:', fbrRefRightX, fbrRefBoxY + 30);
+        doc.fontSize(9).font('Helvetica').text('Available', fbrRefRightX + 60, fbrRefBoxY + 30);
       }
     } else {
-      // Show pending FBR submission message
+      // No FBR data - show pending status
       doc.fontSize(10).font('Helvetica-Bold').text('Status:', fbrRefLeftX, fbrRefY);
       doc.fontSize(9).font('Helvetica').text('Pending FBR Submission', fbrRefLeftX + 50, fbrRefY);
       fbrRefY += 15;
