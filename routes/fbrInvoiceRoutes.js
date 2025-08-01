@@ -7,6 +7,7 @@ const {
   createFbrInvoiceFromInvoice,
   getFbrSubmissions,
   getFbrSubmissionStats,
+  getFbrSummary,
   fixFbrSubmissions,
   getPendingInvoices,
   getFbrInvoiceById,
@@ -32,6 +33,9 @@ router.get('/submissions', getFbrSubmissions);
 
 // Get FBR submission statistics
 router.get('/submissions/stats', getFbrSubmissionStats);
+
+// Get FBR summary (combines stats and recent submissions)
+router.get('/summary', getFbrSummary);
 
 // Fix existing FBR submissions with missing invoice links
 router.post('/submissions/fix', fixFbrSubmissions);

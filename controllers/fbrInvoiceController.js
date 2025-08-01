@@ -395,50 +395,48 @@ exports.getFbrSubmissions = async (req, res) => {
     console.log('🔍 Fetching FBR submissions...');
     
     const submissions = await FbrInvoice.find()
-      .populate({
-        path: 'invoice',
-        populate: [
-          { path: 'buyerId', select: 'companyName buyerNTN buyerSTRN' },
-          { path: 'sellerId', select: 'companyName sellerNTN sellerSTRN' }
-        ]
-      })
-      .populate('client')
+      .populate('originalInvoice', 'invoiceNumber issuedDate finalValue buyerId sellerId')
+      .populate('buyer', 'companyName buyerNTN buyerSTRN')
       .sort({ createdAt: -1 });
 
     console.log('📋 FBR submissions retrieved:', submissions.length);
 
     // Transform the data to include proper buyer/seller names
     const transformedSubmissions = submissions.map(submission => {
-      const invoice = submission.invoice;
+      // Get buyer name from populated buyer or from submission data
+      const buyerName = submission.buyer?.companyName || submission.buyerName || 'Unknown Buyer';
+      const buyerNTN = submission.buyer?.buyerNTN || submission.buyerNTN || '';
+      const buyerSTRN = submission.buyer?.buyerSTRN || submission.buyerSTRN || '';
       
-      // Get buyer and seller names from the linked invoice
-      const buyerName = invoice?.buyerId?.companyName || 'Unknown Buyer';
-      const sellerName = invoice?.sellerId?.companyName || 'Unknown Seller';
-      
-      // For tax consultancy: seller = client, buyer = customer
-      const clientName = sellerName;
-      const customerName = buyerName;
+      // Get invoice details
+      const invoiceNumber = submission.invoiceNumber || submission.originalInvoice?.invoiceNumber || 'N/A';
+      const totalAmount = submission.totalAmount || submission.originalInvoice?.finalValue || 0;
+      const issuedDate = submission.createdAt || submission.originalInvoice?.issuedDate;
 
       return {
-        ...submission.toObject(),
-        // Add computed fields for display
+        id: submission._id,
+        invoiceNumber: invoiceNumber,
         buyerName: buyerName,
-        sellerName: sellerName,
-        clientName: clientName,
-        customerName: customerName,
-        // Add buyer/seller details
-        buyerNTN: invoice?.buyerId?.buyerNTN || '',
-        buyerSTRN: invoice?.buyerId?.buyerSTRN || '',
-        sellerNTN: invoice?.sellerId?.sellerNTN || '',
-        sellerSTRN: invoice?.sellerId?.sellerSTRN || '',
-        // Add invoice details
-        invoiceNumber: invoice?.invoiceNumber || submission.invoiceNumber,
-        totalAmount: invoice?.finalValue || submission.amount,
-        issuedDate: invoice?.issuedDate || submission.createdAt
+        buyerNTN: buyerNTN,
+        buyerSTRN: buyerSTRN,
+        totalAmount: totalAmount,
+        finalAmount: submission.finalAmount || totalAmount,
+        status: submission.status || 'draft',
+        fbrReference: submission.fbrReference,
+        uuid: submission.uuid,
+        irn: submission.irn,
+        qrCode: submission.qrCode,
+        fbrEnvironment: submission.fbrEnvironment || 'sandbox',
+        fbrSubmissionDate: submission.fbrSubmissionDate,
+        createdAt: submission.createdAt,
+        updatedAt: submission.updatedAt,
+        // Add error information if available
+        fbrErrorMessage: submission.fbrErrorMessage,
+        retryCount: submission.retryCount || 0
       };
     });
 
-    console.log('✅ FBR submissions transformed with buyer/seller data');
+    console.log('✅ FBR submissions transformed successfully');
 
     res.json({
       success: true,
@@ -541,9 +539,13 @@ exports.fixFbrSubmissions = async (req, res) => {
 // Get FBR submission statistics
 exports.getFbrSubmissionStats = async (req, res) => {
   try {
-    console.log('📊 Fetching FBR submission statistics...');
+    console.log('📊 Getting FBR submission statistics...');
     
-    const stats = await FbrInvoice.aggregate([
+    // Get total FBR submissions
+    const totalSubmissions = await FbrInvoice.countDocuments();
+    
+    // Get submissions by status
+    const submissionsByStatus = await FbrInvoice.aggregate([
       {
         $group: {
           _id: '$status',
@@ -551,33 +553,131 @@ exports.getFbrSubmissionStats = async (req, res) => {
         }
       }
     ]);
-
-    // Convert to object format
-    const statsObject = {
-      accepted: 0,
-      pending: 0,
-      rejected: 0,
-      total: 0
-    };
-
-    stats.forEach(stat => {
-      statsObject[stat._id] = stat.count;
-      statsObject.total += stat.count;
+    
+    // Get submissions by environment
+    const submissionsByEnvironment = await FbrInvoice.aggregate([
+      {
+        $group: {
+          _id: '$fbrEnvironment',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    // Get recent submissions (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const recentSubmissions = await FbrInvoice.countDocuments({
+      createdAt: { $gte: sevenDaysAgo }
     });
-
-    console.log('✅ FBR submission stats:', statsObject);
-
+    
+    // Get total invoices (for comparison)
+    const totalInvoices = await Invoice.countDocuments();
+    
+    // Calculate success rate
+    const successfulSubmissions = await FbrInvoice.countDocuments({
+      status: { $in: ['submitted', 'accepted'] }
+    });
+    
+    const successRate = totalSubmissions > 0 ? (successfulSubmissions / totalSubmissions * 100).toFixed(1) : 0;
+    
+    const stats = {
+      totalSubmissions,
+      totalInvoices,
+      pendingSubmissions: totalInvoices - totalSubmissions,
+      recentSubmissions,
+      successRate: parseFloat(successRate),
+      submissionsByStatus: submissionsByStatus.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {}),
+      submissionsByEnvironment: submissionsByEnvironment.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {})
+    };
+    
+    console.log('📊 FBR submission stats:', stats);
+    
     res.json({
       success: true,
-      stats: statsObject,
+      stats,
       message: 'FBR submission statistics retrieved successfully'
     });
-
+    
   } catch (error) {
     console.error('❌ Error getting FBR submission stats:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to get FBR submission statistics',
+      error: error.message
+    });
+  }
+};
+
+// Get FBR summary (combines stats and recent submissions)
+exports.getFbrSummary = async (req, res) => {
+  try {
+    console.log('📊 Getting FBR summary...');
+    
+    // Get basic stats
+    const totalSubmissions = await FbrInvoice.countDocuments();
+    const totalInvoices = await Invoice.countDocuments();
+    const pendingSubmissions = totalInvoices - totalSubmissions;
+    
+    // Get recent submissions
+    const recentSubmissions = await FbrInvoice.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .populate('originalInvoice', 'invoiceNumber issuedDate finalValue')
+      .populate('buyer', 'companyName buyerNTN');
+    
+    // Get submissions by status
+    const submissionsByStatus = await FbrInvoice.aggregate([
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    const summary = {
+      totalSubmissions,
+      totalInvoices,
+      pendingSubmissions,
+      recentSubmissions: recentSubmissions.map(sub => ({
+        id: sub._id,
+        invoiceNumber: sub.invoiceNumber,
+        status: sub.status,
+        fbrReference: sub.fbrReference,
+        uuid: sub.uuid,
+        irn: sub.irn,
+        createdAt: sub.createdAt,
+        buyerName: sub.buyerName,
+        totalAmount: sub.totalAmount,
+        finalAmount: sub.finalAmount
+      })),
+      statusBreakdown: submissionsByStatus.reduce((acc, item) => {
+        acc[item._id] = item.count;
+        return acc;
+      }, {})
+    };
+    
+    console.log('📊 FBR summary:', summary);
+    
+    res.json({
+      success: true,
+      summary,
+      message: 'FBR summary retrieved successfully'
+    });
+    
+  } catch (error) {
+    console.error('❌ Error getting FBR summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get FBR summary',
       error: error.message
     });
   }
