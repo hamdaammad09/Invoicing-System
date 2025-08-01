@@ -1,4 +1,3 @@
-const axios = require('axios');
 const FbrApiSetting = require('../models/fbrApiSetting');
 
 class FbrAuthService {

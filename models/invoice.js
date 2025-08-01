@@ -28,7 +28,11 @@ const invoiceSchema = new mongoose.Schema({
   },
   items: [
     {
-      product: String, // Product name
+      product: { 
+        type: String, 
+        required: true,
+        default: 'Product Description'
+      }, // Product name
       quantity: {
         type: Number,
         default: 1,
@@ -73,6 +77,18 @@ const invoiceSchema = new mongoose.Schema({
     default: 0,
   },
   finalValue: Number
+});
+
+// Pre-save hook to ensure items have descriptions
+invoiceSchema.pre('save', function(next) {
+  if (this.items && this.items.length > 0) {
+    this.items.forEach((item, index) => {
+      if (!item.product || item.product.trim() === '') {
+        item.product = `Item ${index + 1}`;
+      }
+    });
+  }
+  next();
 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

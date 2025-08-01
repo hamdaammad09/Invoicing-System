@@ -231,8 +231,8 @@ class FbrApiService {
     // Validate items
     if (invoiceData.items) {
       invoiceData.items.forEach((item, index) => {
-        if (!item.description) {
-          errors.push(`Item ${index + 1}: Description is required`);
+        if (!item.description || item.description.trim() === '') {
+          errors.push(`Item ${index + 1}: Description is required (got: "${item.description}")`);
         }
         if (!item.quantity || item.quantity <= 0) {
           errors.push(`Item ${index + 1}: Quantity must be greater than 0`);

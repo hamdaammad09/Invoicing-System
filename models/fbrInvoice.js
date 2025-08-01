@@ -28,7 +28,7 @@ const fbrInvoiceSchema = new mongoose.Schema({
   
   // Items array for FBR submission
   items: [{
-    description: { type: String, required: true },
+    description: { type: String, required: true, default: 'Item Description' },
     hsCode: { type: String },
     quantity: { type: Number, required: true },
     unitPrice: { type: Number, required: true },

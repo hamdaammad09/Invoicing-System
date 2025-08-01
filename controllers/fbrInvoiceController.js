@@ -225,7 +225,19 @@ exports.createFbrInvoiceFromInvoice = async (req, res) => {
       });
     }
 
+    // Validate items exist and have descriptions
+    if (!invoice.items || invoice.items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invoice must have at least one item'
+      });
+    }
+
+    // Note: We'll provide default descriptions for items that don't have them
     console.log('✅ Invoice found and validated');
+
+    // Debug: Log invoice items structure
+    console.log('📋 Original invoice items:', JSON.stringify(invoice.items, null, 2));
 
     // Prepare FBR invoice data (only buyer info and invoice details)
     const fbrInvoiceData = {
@@ -246,8 +258,29 @@ exports.createFbrInvoiceFromInvoice = async (req, res) => {
       discount: invoice.discount || 0,
       finalAmount: invoice.finalValue || 0,
       
-      // Items array
-      items: invoice.items || [],
+      // Items array - properly map with required fields
+      items: (invoice.items || []).map((item, index) => {
+        // Ensure we have a valid description
+        let description = item.description || item.product || item.name || item.itemName;
+        if (!description || description.trim() === '') {
+          description = `Item ${index + 1}`;
+        }
+        
+        console.log(`📦 Mapping item ${index + 1}:`, {
+          original: item,
+          mappedDescription: description
+        });
+        
+        return {
+          description: description,
+          hsCode: item.hsCode || '',
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || item.price || 0,
+          totalValue: item.totalValue || item.amount || (item.quantity * item.unitPrice) || 0,
+          salesTax: item.salesTax || 0,
+          discount: item.discount || 0
+        };
+      }),
       
       // FBR environment
       fbrEnvironment: sandbox ? 'sandbox' : 'production',
@@ -262,6 +295,9 @@ exports.createFbrInvoiceFromInvoice = async (req, res) => {
     };
 
     console.log('📝 FBR invoice data prepared');
+
+    // Debug: Log mapped FBR items
+    console.log('📋 Mapped FBR items:', JSON.stringify(fbrInvoiceData.items, null, 2));
 
     // Create FBR invoice record
     const fbrInvoice = new FbrInvoice(fbrInvoiceData);
