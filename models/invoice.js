@@ -6,17 +6,22 @@ const invoiceSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
+  
+  // Multi-tenancy: sellerId for data isolation
+  sellerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'sellerSettings',
+    required: true,
+    index: true
+  },
+
   // Updated buyer and seller references
   buyerId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Client', // References the Client collection
     required: true
   },
-  sellerId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'SellerSettings', // References the SellerSettings collection
-    required: true
-  },
+
   // Keep existing fields for backward compatibility
   buyerInfo: {
     type: mongoose.Schema.Types.Mixed, // Can be ObjectId or String
@@ -26,6 +31,7 @@ const invoiceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed, // Can be ObjectId or String
     default: null,
   },
+  
   items: [
     {
       product: { 
@@ -58,6 +64,7 @@ const invoiceSchema = new mongoose.Schema({
       } // Detailed description for FBR
     }
   ],
+  
   // Removed totalAmount, discount, gst, incomeTax, finalAmount fields
   digitalSignature: {
     type: String,
@@ -77,6 +84,7 @@ const invoiceSchema = new mongoose.Schema({
     enum: ['paid', 'unpaid', 'pending', 'overdue', 'cancelled'],
     default: 'pending',
   },
+  
   // Additional fields for form compatibility
   product: String,
   units: Number,
@@ -87,7 +95,28 @@ const invoiceSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  finalValue: Number
+  finalValue: Number,
+
+  // Created by (user who created this invoice)
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+
+  // FBR submission tracking
+  fbrSubmitted: {
+    type: Boolean,
+    default: false
+  },
+  fbrSubmissionDate: {
+    type: Date,
+    default: null
+  },
+  fbrReference: {
+    type: String,
+    default: null
+  }
 });
 
 // Pre-save hook to ensure items have descriptions
@@ -101,5 +130,12 @@ invoiceSchema.pre('save', function(next) {
   }
   next();
 });
+
+// Indexes for efficient queries
+invoiceSchema.index({ sellerId: 1, invoiceNumber: 1 });
+invoiceSchema.index({ sellerId: 1, buyerId: 1 });
+invoiceSchema.index({ sellerId: 1, status: 1 });
+invoiceSchema.index({ sellerId: 1, issuedDate: -1 });
+invoiceSchema.index({ sellerId: 1, fbrSubmitted: 1 });
 
 module.exports = mongoose.model('Invoice', invoiceSchema);

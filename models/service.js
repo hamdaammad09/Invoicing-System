@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 
 const serviceSchema = new mongoose.Schema({
+  // Multi-tenancy: sellerId for data isolation
+  sellerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'sellerSettings',
+    required: true,
+    index: true
+  },
+
   name: { 
     type: String, 
     required: true 
@@ -61,6 +69,24 @@ const serviceSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+
+  // Created by (user who created this service)
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+
+  // Service metadata
+  isTemplate: {
+    type: Boolean,
+    default: false
+  },
+  usageCount: {
+    type: Number,
+    default: 0
+  },
+
   createdDate: {
     type: Date,
     default: Date.now
@@ -82,5 +108,11 @@ serviceSchema.pre('findOneAndUpdate', function(next) {
   this.set({ updatedDate: new Date() });
   next();
 });
+
+// Indexes for efficient queries
+serviceSchema.index({ sellerId: 1, name: 1 });
+serviceSchema.index({ sellerId: 1, status: 1 });
+serviceSchema.index({ sellerId: 1, category: 1 });
+serviceSchema.index({ sellerId: 1, type: 1 });
 
 module.exports = mongoose.model('Service', serviceSchema);

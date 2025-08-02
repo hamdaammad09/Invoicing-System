@@ -7,6 +7,9 @@ dotenv.config();
 // Import your database connection
 const connectDB = require('./config/db');
 
+// Import multi-tenancy middleware
+const { multiTenancyMiddleware } = require('./middleware/multiTenancyMiddleware');
+
 // Create Express app
 const app = express();
 
@@ -57,6 +60,9 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Apply multi-tenancy middleware to all API routes
+app.use('/api', multiTenancyMiddleware);
 
 const clientRoutes = require('./routes/clientRoutes');
 const invoiceRoutes = require('./routes/invoiceRoutes');

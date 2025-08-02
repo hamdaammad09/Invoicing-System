@@ -3,56 +3,105 @@ const Client = require('../models/client');
 const SellerSettings = require('../models/sellerSettings');
 const QRCode = require('qrcode');
 const { findHSCode } = require('../utils/hsCodeDatabase');
+const { buildSellerQuery, validateSellerOwnership } = require('../middleware/multiTenancyMiddleware');
 
-// Get all invoices
+// Get all invoices (filtered by seller)
 exports.getInvoices = async (req, res) => {
   try {
-    const invoices = await Invoice.find()
-      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address') // Populate buyer data
-      .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone') // Populate seller data
+    console.log('📋 Fetching invoices with seller isolation:', {
+      sellerId: req.sellerId,
+      userRole: req.userRole
+    });
+
+    // Build seller-specific query
+    const query = buildSellerQuery(req);
+    
+    const invoices = await Invoice.find(query)
+      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address')
+      .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone')
+      .populate('createdBy', 'name email')
       .sort({ issuedDate: -1 });
     
-    res.json(invoices);
+    console.log(`✅ Found ${invoices.length} invoices for seller`);
+    
+    res.json({
+      success: true,
+      invoices: invoices,
+      count: invoices.length
+    });
   } catch (error) {
-    console.error('Error fetching invoices:', error);
-    res.status(500).json({ error: 'Failed to fetch invoices' });
+    console.error('❌ Error fetching invoices:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch invoices' 
+    });
   }
 };
 
-// Get available buyers for dropdown
+// Get available buyers for dropdown (filtered by seller)
 exports.getAvailableBuyers = async (req, res) => {
   try {
-    const buyers = await Client.find({}, 'companyName buyerSTRN buyerNTN truckNo address phone')
+    console.log('📋 Fetching available buyers with seller isolation');
+
+    // Build seller-specific query for active buyers
+    const query = buildSellerQuery(req, { status: 'active' });
+    
+    const buyers = await Client.find(query, 'companyName buyerSTRN buyerNTN truckNo address phone')
       .sort({ companyName: 1 });
     
-    console.log(`✅ Found ${buyers.length} available buyers`);
-    res.json(buyers);
+    console.log(`✅ Found ${buyers.length} available buyers for seller`);
+    
+    res.json({
+      success: true,
+      buyers: buyers,
+      count: buyers.length
+    });
   } catch (error) {
     console.error('❌ Error fetching buyers:', error);
-    res.status(500).json({ error: 'Failed to fetch buyers' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch buyers' 
+    });
   }
 };
 
-// Get available sellers for dropdown
+// Get available sellers for dropdown (only for admin or current seller)
 exports.getAvailableSellers = async (req, res) => {
   try {
-    const sellers = await SellerSettings.find({}, 'companyName sellerNTN sellerSTRN address phone')
-      .sort({ companyName: 1 });
+    console.log('📋 Fetching available sellers with seller isolation');
+
+    let sellers;
+    
+    // Admin can see all sellers
+    if (req.canAccessAllData) {
+      sellers = await SellerSettings.find({}, 'companyName sellerNTN sellerSTRN address phone')
+        .sort({ companyName: 1 });
+    } else {
+      // Sellers can only see their own settings
+      sellers = await SellerSettings.find({ _id: req.sellerId }, 'companyName sellerNTN sellerSTRN address phone');
+    }
     
     console.log(`✅ Found ${sellers.length} available sellers`);
-    res.json(sellers);
+    
+    res.json({
+      success: true,
+      sellers: sellers,
+      count: sellers.length
+    });
   } catch (error) {
     console.error('❌ Error fetching sellers:', error);
-    res.status(500).json({ error: 'Failed to fetch sellers' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch sellers' 
+    });
   }
 };
 
-// Create new invoice
+// Create new invoice (with seller isolation)
 exports.createInvoice = async (req, res) => {
   try {
     const { 
       buyerId, 
-      sellerId, 
       items, 
       invoiceNumber,
       status,
@@ -67,9 +116,9 @@ exports.createInvoice = async (req, res) => {
       finalValue
     } = req.body;
 
-    console.log('🔄 Creating invoice with data:', {
+    console.log('🔄 Creating invoice with seller isolation:', {
+      sellerId: req.sellerId,
       buyerId,
-      sellerId,
       items,
       product,
       units,
@@ -81,163 +130,115 @@ exports.createInvoice = async (req, res) => {
       issuedDate
     });
 
-    // Validate that buyerId and sellerId are provided
-    if (!buyerId) {
-      return res.status(400).json({ error: 'buyerId is required. Please select a buyer from the dropdown.' });
-    }
-    
-    if (!sellerId) {
-      return res.status(400).json({ error: 'sellerId is required. Please select a seller from the dropdown.' });
+    // Ensure seller context
+    if (!req.sellerId && !req.canAccessAllData) {
+      return res.status(403).json({
+        success: false,
+        error: 'Seller context required to create invoices.'
+      });
     }
 
-    // Validate buyer and seller exist
-    const buyer = await Client.findById(buyerId);
-    const seller = await SellerSettings.findById(sellerId);
+    // Validate that buyerId is provided
+    if (!buyerId) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'buyerId is required. Please select a buyer from the dropdown.' 
+      });
+    }
+
+    // Validate buyer exists and belongs to this seller
+    const buyerQuery = buildSellerQuery(req, { _id: buyerId });
+    const buyer = await Client.findOne(buyerQuery);
     
     if (!buyer) {
       return res.status(400).json({ 
-        error: 'Selected buyer not found. Please refresh the page and select a valid buyer.' 
-      });
-    }
-    
-    if (!seller) {
-      return res.status(400).json({ 
-        error: 'Selected seller not found. Please refresh the page and select a valid seller.' 
+        success: false,
+        error: 'Selected buyer not found or access denied. Please refresh the page and select a valid buyer.' 
       });
     }
 
-    console.log('✅ Buyer found:', buyer.companyName);
-    console.log('✅ Seller found:', seller.companyName);
+    // Use seller's own settings
+    const sellerId = req.sellerId;
 
-    // Generate invoice number if not provided
-    const finalInvoiceNumber = invoiceNumber || `INV-${Date.now()}`;
-
-    // Generate QR code with specific invoice data (with prefix to avoid phone number detection)
-    const qrData = `TAX_INVOICE:${JSON.stringify({
-      invoiceNumber: finalInvoiceNumber,
-      buyerNTN: buyer.buyerNTN,
-      sellerNTN: seller.sellerNTN,
-      date: issuedDate ? new Date(issuedDate).toISOString() : new Date().toISOString()
-    })}`;
+    // Process items and assign HS codes
+    let processedItems = [];
     
-    console.log('🔍 QR Code Data:', qrData);
-    
-    console.log('🔍 Generating QR code with data:', qrData);
-    const qrCode = await QRCode.toDataURL(qrData, {
-      errorCorrectionLevel: 'M',
-      type: 'image/png',
-      quality: 0.92,
-      margin: 1
-    });
-
-    // Prepare items array - handle both new form fields and legacy items
-    let itemsArray = [];
-    
-    // If we have new form fields, use them
-    if (product && (unitPrice || totalValue)) {
-      // Automatically assign HS code based on product description
-      const autoHSCode = findHSCode(product);
-      console.log('🔍 Auto-assigned HS code for product:', product, '→', autoHSCode);
-      
-      itemsArray = [{
-        product: product,
-        quantity: parseFloat(units) || 1,
-        unitPrice: parseFloat(unitPrice) || 0,
-        totalValue: parseFloat(totalValue) || 0,
-        salesTax: parseFloat(salesTax) || 0,
-        extraTax: parseFloat(extraTax) || 0,
-        finalValue: parseFloat(finalValue) || 0,
-        hsCode: autoHSCode // Automatically assigned HS code
-      }];
-    } else if (items && Array.isArray(items)) {
-      // Process items array and assign HS codes automatically
-      itemsArray = items.map(item => {
-        const autoHSCode = findHSCode(item.product || item.description || item.name);
-        console.log('🔍 Auto-assigned HS code for item:', item.product || item.description || item.name, '→', autoHSCode);
+    if (items && items.length > 0) {
+      processedItems = await Promise.all(items.map(async (item) => {
+        // Auto-assign HS code if not provided
+        if (!item.hsCode || item.hsCode === '0000.00.00') {
+          const hsCode = await findHSCode(item.description || item.product);
+          item.hsCode = hsCode;
+        }
         
         return {
-          ...item,
-          hsCode: item.hsCode || autoHSCode // Use existing HS code or auto-assign
+          product: item.description || item.product || 'Product Description',
+          quantity: item.quantity || 1,
+          unitPrice: item.unitPrice || 0,
+          totalValue: item.totalValue || (item.quantity * item.unitPrice) || 0,
+          salesTax: item.salesTax || 0,
+          extraTax: item.extraTax || 0,
+          finalValue: item.finalValue || 0,
+          hsCode: item.hsCode || '0000.00.00',
+          description: item.description || item.product || 'Item Description'
         };
-      });
-    } else if (items && typeof items === 'string') {
-      // Handle case where items is sent as a string
-      try {
-        const parsedItems = JSON.parse(items);
-        itemsArray = parsedItems.map(item => {
-          const autoHSCode = findHSCode(item.product || item.description || item.name);
-          console.log('🔍 Auto-assigned HS code for parsed item:', item.product || item.description || item.name, '→', autoHSCode);
-          
-          return {
-            ...item,
-            hsCode: item.hsCode || autoHSCode
-          };
-        });
-      } catch (e) {
-        // If parsing fails, create a single item
-        const autoHSCode = findHSCode(items);
-        console.log('🔍 Auto-assigned HS code for string item:', items, '→', autoHSCode);
-        
-        itemsArray = [{
-          product: items,
-          quantity: 1,
-          unitPrice: totalValue || 0,
-          totalValue: totalValue || 0,
-          salesTax: salesTax || 0,
-          extraTax: extraTax || 0,
-          finalValue: finalValue || totalValue || 0,
-          hsCode: autoHSCode
-        }];
-      }
-    } else {
-      // Default item if no items provided
-      const autoHSCode = findHSCode('Tax Filing');
-      console.log('🔍 Auto-assigned HS code for default item: Tax Filing →', autoHSCode);
-      
-      itemsArray = [{
-        product: 'Tax Filing',
-        quantity: 1,
-        unitPrice: totalValue || 0,
+      }));
+    } else if (product) {
+      // Handle legacy single product format
+      const hsCode = await findHSCode(product);
+      processedItems = [{
+        product: product,
+        quantity: units || 1,
+        unitPrice: unitPrice || 0,
         totalValue: totalValue || 0,
         salesTax: salesTax || 0,
         extraTax: extraTax || 0,
-        finalValue: finalValue || totalValue || 0,
-        hsCode: autoHSCode
+        finalValue: finalValue || 0,
+        hsCode: hsCode,
+        description: product
       }];
     }
 
-    const invoice = new Invoice({
-      invoiceNumber: finalInvoiceNumber,
-      buyerId,
-      sellerId,
-      items: itemsArray,
-      qrCode,
-      status,
-      issuedDate: issuedDate ? new Date(issuedDate) : new Date(),
-      // Store new form fields for compatibility
-      product,
-      units,
-      unitPrice,
-      totalValue,
-      salesTax,
-      extraTax,
-      finalValue
+    // Calculate totals
+    const totalAmount = processedItems.reduce((sum, item) => sum + (item.totalValue || 0), 0);
+    const totalTax = processedItems.reduce((sum, item) => sum + (item.salesTax || 0), 0);
+    const totalExtraTax = processedItems.reduce((sum, item) => sum + (item.extraTax || 0), 0);
+    const finalAmount = totalAmount + totalTax + totalExtraTax;
+
+    // Create invoice data
+    const invoiceData = {
+      invoiceNumber: invoiceNumber || `INV-${Date.now()}`,
+      buyerId: buyerId,
+      sellerId: sellerId,
+      items: processedItems,
+      totalAmount: totalAmount,
+      salesTax: totalTax,
+      extraTax: totalExtraTax,
+      finalValue: finalAmount,
+      status: status || 'pending',
+      issuedDate: issuedDate || new Date(),
+      createdBy: req.user._id
+    };
+
+    console.log('📝 Invoice data prepared:', invoiceData);
+
+    const invoice = new Invoice(invoiceData);
+    const savedInvoice = await invoice.save();
+
+    console.log('✅ Invoice created successfully:', savedInvoice._id);
+
+    res.status(201).json({
+      success: true,
+      invoice: savedInvoice,
+      message: 'Invoice created successfully'
     });
 
-    const savedInvoice = await invoice.save();
-    
-    console.log('✅ Invoice saved with ID:', savedInvoice._id);
-    
-    // Populate the saved invoice with buyer and seller data
-    const populatedInvoice = await Invoice.findById(savedInvoice._id)
-      .populate('buyerId', 'companyName buyerSTRN buyerNTN truckNo address phone')
-      .populate('sellerId', 'companyName sellerNTN sellerSTRN address phone');
-
-    console.log('✅ Invoice created successfully with populated data');
-    res.status(201).json(populatedInvoice);
   } catch (error) {
     console.error('❌ Error creating invoice:', error);
-    res.status(500).json({ error: 'Failed to create invoice. Please try again.' });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to create invoice. Please try again.' 
+    });
   }
 };
 

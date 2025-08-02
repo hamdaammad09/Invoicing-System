@@ -15,6 +15,6 @@ router.delete('/:id', clientController.deleteClient);
 // Additional routes for buyer management
 router.get('/buyers/all', clientController.getAllBuyers); // Get all clients as buyers
 router.get('/buyers/active', clientController.getActiveBuyers); // Get only active buyers
-router.post('/buyers/validate', clientController.validateBuyer); // Validate buyer data
+router.get('/buyers/stats', clientController.getBuyerStats); // Get buyer statistics
 
 module.exports = router;

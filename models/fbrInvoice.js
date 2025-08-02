@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 
 const fbrInvoiceSchema = new mongoose.Schema({
+  // Multi-tenancy: sellerId for data isolation
+  sellerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'sellerSettings',
+    required: true,
+    index: true
+  },
+
   // Invoice Reference
   invoiceNumber: { type: String, required: true },
   fbrInvoiceId: { type: String },
@@ -65,14 +73,24 @@ const fbrInvoiceSchema = new mongoose.Schema({
   originalInvoice: { type: mongoose.Schema.Types.ObjectId, ref: 'Invoice' },
   buyer: { type: mongoose.Schema.Types.ObjectId, ref: 'Client' },
   
+  // Created by (user who submitted this to FBR)
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  
   // Metadata
   notes: { type: String },
   tags: [{ type: String }]
   
 }, { timestamps: true });
 
-// Indexes for performance
-fbrInvoiceSchema.index({ invoiceNumber: 1 });
+// Indexes for performance and multi-tenancy
+fbrInvoiceSchema.index({ sellerId: 1, invoiceNumber: 1 });
+fbrInvoiceSchema.index({ sellerId: 1, status: 1 });
+fbrInvoiceSchema.index({ sellerId: 1, fbrEnvironment: 1 });
+fbrInvoiceSchema.index({ sellerId: 1, createdAt: -1 });
 fbrInvoiceSchema.index({ fbrReference: 1 });
 fbrInvoiceSchema.index({ status: 1 });
 fbrInvoiceSchema.index({ fbrEnvironment: 1 });
