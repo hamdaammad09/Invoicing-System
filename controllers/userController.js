@@ -35,13 +35,30 @@ exports.createUser = async (req, res) => {
   }
 };
 
-// ✅ Get all users
+// ✅ Get all users (with multi-tenancy support)
 exports.getUsers = async (req, res) => {
   try {
-    const users = await User.find();
-    res.json(users);
+    // Admins can see all users, others see filtered results
+    let query = {};
+    
+    if (req.user && req.user.role === 'admin') {
+      // Admin sees all users
+      query = {};
+    } else if (req.sellerId) {
+      // Sellers see their own users and buyers
+      query = { 
+        $or: [
+          { sellerId: req.sellerId },
+          { role: 'admin' } // Admins are visible to all
+        ]
+      };
+    }
+
+    const users = await User.find(query).select('-password');
+    res.json({ success: true, users, count: users.length });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Error fetching users:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
