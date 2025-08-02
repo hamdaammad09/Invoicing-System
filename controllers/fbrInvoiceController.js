@@ -413,6 +413,16 @@ exports.getFbrSubmissions = async (req, res) => {
       const totalAmount = submission.totalAmount || submission.originalInvoice?.finalValue || 0;
       const issuedDate = submission.createdAt || submission.originalInvoice?.issuedDate;
 
+      // Extract HS Codes from items
+      const hsCodes = submission.items && submission.items.length > 0 
+        ? submission.items.map(item => item.hsCode || '0000.00.00').join(', ')
+        : '0000.00.00';
+
+      // Get items description
+      const itemsDescription = submission.items && submission.items.length > 0
+        ? submission.items.map(item => item.description || 'Item').join(', ')
+        : 'N/A';
+
       return {
         id: submission._id,
         invoiceNumber: invoiceNumber,
@@ -430,6 +440,10 @@ exports.getFbrSubmissions = async (req, res) => {
         fbrSubmissionDate: submission.fbrSubmissionDate,
         createdAt: submission.createdAt,
         updatedAt: submission.updatedAt,
+        // Add HS Code and items information
+        hsCodes: hsCodes,
+        itemsDescription: itemsDescription,
+        items: submission.items || [],
         // Add error information if available
         fbrErrorMessage: submission.fbrErrorMessage,
         retryCount: submission.retryCount || 0
